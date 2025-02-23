@@ -85,7 +85,7 @@ async function buildAppFiles(files, isDev) {
         setup(build) {
           build.onLoad({ filter: /.tsx/, }, args => {
             const cleanedContent = removeClientScriptInTSXFile(args.path);
-            const htmlImportStart = 'import html from \'html\';\n';
+            const htmlImportStart = 'import { html } from \'xpine\';\n';
             const newContent = `${htmlImportStart}${cleanedContent.content}`;
             componentData.push({
               ...args,

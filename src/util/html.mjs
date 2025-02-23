@@ -1,4 +1,4 @@
-export default class HTML {
+export class html {
 
   static attributeObjectToString(props) {
     if (!props) return '';
@@ -25,4 +25,8 @@ export default class HTML {
     }
     return `<${type}${this.attributeObjectToString(props)}>${childrenResult.filter(Boolean).join('')}</${type}>`;
   }
+}
+
+export function JSXRuntime() {
+  return true;
 }

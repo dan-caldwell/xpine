@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.mjs",
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.8",
