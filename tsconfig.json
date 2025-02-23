@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxFragmentFactory": "html.fragment",
+    "jsxFactory": "html.createElement",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "forceConsistentCasingInFileNames": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "target": "esnext",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsxImportSource": "html",
+    "incremental": true,
+    "allowImportingTsExtensions": true,
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "postcss.config.mjs",
+    "tailwind.config.js",
+    "eslint.config.mjs",
+    "index.mjs",
+    "src/runDevServer.mjs",
+    "src/express.mjs",
+    "src/build.mjs",
+    "src/auth.mjs",
+    "src/util/require.mjs",
+    "src/util/get-config.mjs",
+    "src/util/env.mjs",
+    "src/scripts/run-dev.mjs",
+    "src/scripts/build.mjs",
+    "src/build/typescript-builder.mjs"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist-frontend",
+    "**/*.js"
+  ],
+}
