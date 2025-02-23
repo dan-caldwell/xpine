@@ -1,7 +1,8 @@
 import jsonwebtoken from 'jsonwebtoken';
+import { ServerRequest } from '../types';
 const { verify, sign, } = jsonwebtoken;
 
-export async function signUser(email, username) {
+export async function signUser(email: string, username: string) {
   return new Promise((resolve, reject) => {
     sign(
       {
@@ -20,7 +21,7 @@ export async function signUser(email, username) {
   });
 }
 
-export async function verifyUser(token) {
+export async function verifyUser(token: string): Promise<any> {
   return new Promise((resolve, reject) => {
     // @ts-ignore
     verify(token, process.env.JWT_PRIVATE_KEY, (err, authorizedData) => {
@@ -30,7 +31,7 @@ export async function verifyUser(token) {
   });
 }
 
-export function getTokenFromRequest(req) {
+export function getTokenFromRequest(req: ServerRequest) {
   // @ts-ignore
   const { authorization, } = req.headers;
   if (!authorization) return null;

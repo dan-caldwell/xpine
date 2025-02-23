@@ -7,13 +7,12 @@ import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
   removeClientScriptInTSXFile
-} from './build/typescript-builder.mjs';
+} from '../build/typescript-builder.js';
 import { globSync } from 'glob';
 import postcss from 'postcss';
 // @ts-ignore
 import tailwindPostcss from '@tailwindcss/postcss';
-import { config } from './util/get-config.mjs';
-import basePath from '../base-path.mjs';
+import { config } from '../util/get-config';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -36,7 +35,7 @@ export async function buildApp(isDev = false) {
   }
 }
 
-async function buildAppFiles(files, isDev) {
+async function buildAppFiles(files: string[], isDev?: boolean) {
   const componentData = [];
   const dataFiles = [];
   // Filter out client side files and files that aren't of the allowed extensions
@@ -125,7 +124,7 @@ async function buildAppFiles(files, isDev) {
 }
 
 // Build client side files
-async function buildClientSideFiles(alpineDataFiles = [], isDev) {
+async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: boolean) {
   // Write the temp file to use
   const tempFilePath = path.join(config.distTempFolder, './app.ts');
   fs.ensureFileSync(tempFilePath);
@@ -162,19 +161,19 @@ async function buildClientSideFiles(alpineDataFiles = [], isDev) {
   await logSize(config.distPublicDir, 'client');
 }
 
-function writeDevServerClientSideCode(tempFilePath) {
-  const devServerPath = path.join(basePath, './src/build/dev-server.mjs');
+function writeDevServerClientSideCode(tempFilePath: string) {
+  const devServerPath = path.join(import.meta.dirname, '../static/dev-server.js');
   const content = fs.readFileSync(devServerPath, 'utf-8');
   fs.appendFileSync(tempFilePath, `\n` + content);
 }
 
-function writeSpaClientSideCode(tempFilePath) {
-  const spaPath = path.join(basePath, './src/build/spa.mjs');
+function writeSpaClientSideCode(tempFilePath: string) {
+  const spaPath = path.join(import.meta.dirname, '../static/spa.js');
   const content = fs.readFileSync(spaPath, 'utf-8');
   fs.appendFileSync(tempFilePath, `\n` + content);
 }
 
-async function buildAlpineDataFile(componentData, dataFiles) {
+async function buildAlpineDataFile(componentData: any[], dataFiles: any[]) {
   const output = {
     imports: [
       'import Alpine from \'alpinejs\';'
@@ -254,7 +253,12 @@ export async function buildPublicFolderSymlinks() {
   }
 }
 
-export async function logSize(pathName, type, validExtensions = ['.js', '.css']) {
+type FileItem = {
+  file: string;
+  size: number;
+}
+
+export async function logSize(pathName: string, type: 'app' | 'client' | 'css', validExtensions = ['.js', '.css']) {
   const files = globSync(pathName + '/**/*' + (type === 'css' ? '.css' : ''));
   const fileSizes = files.map((file) => {
     if (!validExtensions.find(ext => file.endsWith(ext))) return false;
@@ -263,7 +267,7 @@ export async function logSize(pathName, type, validExtensions = ['.js', '.css'])
       size: (fs.statSync(file).size) / (1024 * 1000),
     };
   }).filter(Boolean);
-  const totalSize = fileSizes.reduce((total, current) => {
+  const totalSize = fileSizes.reduce((total, current: FileItem) => {
     return current.size + total;
   }, 0);
   console.info(`[${totalSize.toFixed(3)} MB] Built ${type}`);

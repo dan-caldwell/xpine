@@ -1,9 +1,10 @@
 import path from 'path';
-import require from './require.mjs';
+import require from './require.js';
+import { XPineConfig } from '../../types';
 
 const rootDir = process.cwd();
 
-export function fromRoot(pathName) {
+export function fromRoot(pathName?: string) {
   if (!pathName) return rootDir;
   return path.join(rootDir, pathName);
 }
@@ -55,7 +56,7 @@ const configDefaults = {
   },
 };
 
-export const config = {
+export const config: XPineConfig = {
   ...configDefaults,
   ...userConfig,
-}
+};

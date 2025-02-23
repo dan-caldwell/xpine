@@ -3,11 +3,11 @@ import http from 'http';
 import express from 'express';
 import EventEmitter from 'events';
 import chokidar from 'chokidar';
-import { buildApp } from './build.mjs';
+import { buildApp } from './scripts/build.js';
 import { globSync } from 'glob';
 import path from 'path';
-import { config } from './util/get-config.mjs';
-import require from './util/require.mjs';
+import { config } from './util/get-config';
+import require from './util/require.js';
 
 export async function runDevServer() {
   const startServer = require(config.serverAppPath);

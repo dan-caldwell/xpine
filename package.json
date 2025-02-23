@@ -1,7 +1,7 @@
 {
   "name": "xpine",
   "version": "0.0.2",
-  "main": "index.mjs",
+  "main": "dist/index.js",
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.8",
     "builtin-modules": "^4.0.0",
@@ -19,8 +19,15 @@
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   },
-  "bin": {
-    "xpine-build": "src/scripts/build.mjs"
+  "scripts": {
+    "build": "tsx ./src/scripts/build-module.ts"
   },
-  "type": "module"
+  "bin": {
+    "xpine-build": "dist/src/scripts/xpine-build.js",
+    "xpine-dev": "dist/src/scripts/xpine-dev.js"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^22.13.5"
+  }
 }

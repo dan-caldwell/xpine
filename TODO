@@ -1,0 +1,3 @@
+- npx create-xpine-app
+- xpine-dev
+  - does not use the built app

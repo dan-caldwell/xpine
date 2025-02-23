@@ -2,9 +2,13 @@ import ts from 'typescript';
 import fs from 'fs-extra';
 import path from 'path';
 
+type ImportDeclaration = {
+  node: ts.Node;
+  importPath: string;
+}
 
 // node arg should initially be the source node
-export function getImportDeclarationNodes(node, sourceFile, importDeclarations = []) {
+export function getImportDeclarationNodes(node: ts.Node, sourceFile: ts.SourceFile, importDeclarations: ImportDeclaration[] = []) {
   if (node.kind === ts.SyntaxKind.ImportDeclaration) {
     let importPath = null;
     node.forEachChild(child => {
@@ -23,7 +27,7 @@ export function getImportDeclarationNodes(node, sourceFile, importDeclarations =
   return importDeclarations;
 }
 
-export function stripImportsNodesFromFile(importsToStrip, content, importDeclarations) {
+export function stripImportsNodesFromFile(importsToStrip: string[], content: string, importDeclarations: ImportDeclaration[]) {
   let outputContent = content;
   const filteredImports = importDeclarations.filter(item => importsToStrip.includes(item.importPath));
   for (const importItem of filteredImports) {
@@ -32,11 +36,17 @@ export function stripImportsNodesFromFile(importsToStrip, content, importDeclara
   return outputContent;
 }
 
+type FoundAlpineFunction = {
+  name: string;
+  isDefaultExport: boolean;
+  hasExport: boolean;
+}
+
 export function findDataAttributesAndFunctions(
-  node,
-  sourceFile,
-  foundDataAttributes = [],
-  foundFunctions = []
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  foundDataAttributes: string[] = [],
+  foundFunctions: FoundAlpineFunction[] = []
 ) {
   if (node.kind === ts.SyntaxKind.JsxAttribute) {
     const attribute = getAttributeValuePair(node, sourceFile);
@@ -64,7 +74,7 @@ export function findDataAttributesAndFunctions(
   };
 }
 
-export function getAttributeValuePair(node, sourceFile) {
+export function getAttributeValuePair(node: ts.Node, sourceFile: ts.SourceFile): string[] {
   const result = [];
   node.forEachChild(child => {
     result.push(child.getText(sourceFile));
@@ -72,7 +82,7 @@ export function getAttributeValuePair(node, sourceFile) {
   return result;
 }
 
-export function getFunctionDeclarationValue(node, sourceFile) {
+export function getFunctionDeclarationValue(node: ts.Node, sourceFile: ts.SourceFile): FoundAlpineFunction {
   const result = {
     name: null,
     isDefaultExport: false,
@@ -93,7 +103,7 @@ export function getFunctionDeclarationValue(node, sourceFile) {
 }
 
 // Convert entry point files into one big bundle file
-export function convertEntryPointsToSingleFile(entryPoints, tempWritePath) {
+export function convertEntryPointsToSingleFile(entryPoints: string[], tempWritePath: string) {
   fs.writeFileSync(
     tempWritePath,
     entryPoints
@@ -102,15 +112,15 @@ export function convertEntryPointsToSingleFile(entryPoints, tempWritePath) {
   );
 }
 
-export function removeClientScriptInTSXFile(pathName) {
+export function removeClientScriptInTSXFile(pathName: string) {
   const content = fs.readFileSync(pathName, 'utf-8');
   const source = ts.createSourceFile(
     pathName,
     content,
     ts.ScriptTarget.Latest
   );
-  let toRemoveFrom;
-  let clientDataStart;
+  let toRemoveFrom: number;
+  let clientDataStart: number;
   const clientImportsToHoist = [];
   const clientImportsToReplace = [];
   source.forEachChild((child) => {
@@ -157,7 +167,7 @@ export function removeClientScriptInTSXFile(pathName) {
 }
 
 export function printRecursiveFrom(
-  node, indentLevel, sourceFile
+  node: ts.Node, indentLevel: number, sourceFile: ts.SourceFile
 ) {
   const indentation = '-'.repeat(indentLevel);
   const syntaxKind = ts.SyntaxKind[node.kind];

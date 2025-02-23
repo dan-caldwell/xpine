@@ -1,9 +1,10 @@
-import express from 'express';
+import express, { NextFunction } from 'express';
 import { globSync } from 'glob';
-import { config } from './util/get-config.mjs';
-import { verifyUser } from './auth.mjs';
-import require from './util/require.mjs';
+import { config } from './util/get-config';
+import { verifyUser } from './auth';
+import require from './util/require.js';
 import requestIP from 'request-ip';
+import { ServerRequest } from '../types';
 
 const doctypeHTML = '<!DOCTYPE html>';
 
@@ -73,7 +74,7 @@ export async function createRouter() {
   };
 }
 
-export async function verifyUserMiddleware(req, _res, next) {
+async function verifyUserMiddleware(req: ServerRequest, _res: Response, next: NextFunction) {
   // @ts-ignore
   const { usertoken, } = req.cookies;
   if (!usertoken) {
