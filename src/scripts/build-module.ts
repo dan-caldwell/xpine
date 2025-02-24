@@ -25,7 +25,7 @@ export async function buildXPine() {
     platform: 'node',
     outdir: path.join(dirname, '../../dist'),
     bundle: true,
-    sourcemap: 'inline',
+    sourcemap: false,
     external: allPackages,
     jsx: 'transform',
     minify: false,
