@@ -131,3 +131,18 @@ dist
 
 # for npm
 src/
+
+# xpine
+.env
+*.env
+.env*
+node_modules
+dist-*
+dist
+*.db
+*.db-journal
+*.sql
+cdk.out
+cdk.context.json
+*.pem
+*.key

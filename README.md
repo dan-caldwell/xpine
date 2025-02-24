@@ -14,9 +14,7 @@ export default {}
 
 ### Build
 
-`import { buildApp } from 'xpine';`
-
-- Used for building production app
+`xpine-build`
 
 ## Auth
 
@@ -24,7 +22,7 @@ export default {}
 
 ## Dev server
 
-`import { runDevServer } from 'xpine';`
+`xpine-dev`
 
 ## Config
 
@@ -37,3 +35,25 @@ export default {}
 ## Router
 
 `import { createXPineRouter } from 'xpine';`
+
+
+### SPA interactivity
+
+- data-spa="true"
+  - transforms link into client side URL update
+- data-persistent="id"
+  - makes element persistent across pages that include the same persistent data-persistent tag
+- data-spa-crossorigin="true"
+  - enables cross-origin spa navigation requests (untested)
+
+#### Custom events
+  - spa:updatePageContent
+    - sent when the page content has update
+  - spa:updatePageURL
+    - send when the page URL has update
+
+#### Custom scripts for certain pages
+
+1. Add script to src/public/scripts/pages/your_script.ts
+2. Import script into page HTML (e.g. <script src="/scripts/pages/your_script.ts">)
+3. To unload event listeners, use `window.addEventListener('spa:updatePageURL', () => { remove event listeners here})` in the code
