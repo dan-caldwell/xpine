@@ -19,6 +19,10 @@
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dan-caldwell/xpine.git"
+  },
   "scripts": {
     "build": "tsx ./src/scripts/build-module.ts"
   },
