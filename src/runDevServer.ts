@@ -8,8 +8,12 @@ import { globSync } from 'glob';
 import path from 'path';
 import { config } from './util/get-config';
 import require from './util/require.js';
+import { setupEnv } from './util/env.js';
+
+setupEnv();
 
 export async function runDevServer() {
+  process.env.NODE_ENV = 'development';
   const startServer = require(config.serverAppPath);
 
   // Initial server set up

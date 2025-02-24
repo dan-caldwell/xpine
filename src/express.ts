@@ -1,8 +1,7 @@
-import express, { NextFunction } from 'express';
+import express, { NextFunction, Express, Request, Response } from 'express';
 import { globSync } from 'glob';
 import { config } from './util/get-config';
 import { verifyUser } from './auth';
-import require from './util/require.js';
 import requestIP from 'request-ip';
 import { ServerRequest } from '../types';
 
@@ -24,7 +23,7 @@ export async function createRouter() {
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
     // Import route
-    const routeItem = process.env.NODE_ENV === 'development' ? null : require(route.path).default;
+    const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
     // Configure result,methods for the route
     const slugRoute = route.route.toLowerCase().replace(/[ ]/g, '');
     const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
@@ -44,7 +43,7 @@ export async function createRouter() {
       foundMethod,
       route,
     });
-    router[foundMethod || 'get'](formattedRouteItem, async (req, res) => {
+    router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       try {
         // Check if it's a string response from the routeItem or is a different response
         if (routeItem) {
@@ -55,7 +54,7 @@ export async function createRouter() {
           }
           return;
         }
-        const defaultRouteImport = require(route.path).default;
+        const defaultRouteImport = (await import(route.path + `?cache=${Date.now()}`)).default;
         // Require every time only if in development mode
         if (isJSX) {
           res.send(doctypeHTML + (await defaultRouteImport(req, res)));
@@ -89,28 +88,31 @@ async function verifyUserMiddleware(req: ServerRequest, _res: Response, next: Ne
   next();
 }
 
-export async function createXPineRouter(app, beforeErrorRoute) {
+export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Express) => void) {
   app.use(express.static(config.distPublicDir));
   app.use(verifyUserMiddleware);
   app.use(requestIP.mw());
 
   const { router, routeResults, } = await createRouter();
-  app.use(function replaceableRouter(req, res, next) {
+  app.use(function replaceableRouter(req: Request, res: Response, next: NextFunction) {
     router(req, res, next);
   });
 
   const found404 = routeResults?.find(item => item?.formattedRouteItem === '/404');
-  const import404 = found404 ? require(found404.route.path).default : null;
+  const import404 = process.env.NODE_ENV === 'development' ? null : (await import(found404.route.path)).default;
 
   if (beforeErrorRoute) beforeErrorRoute(app);
 
   // error handler
-  app.use(async function (req, res) {
+  app.use(async function (req: Request, res: Response) {
     // render the error page
     res.status(404);
 
     if (import404) {
       res.send(doctypeHTML + (await import404(req, res)));
+    } else if (found404 && process.env.NODE_ENV === 'development') {
+      const import404Item = (await import(found404.route.path + `?cache=${Date.now()}`)).default
+      res.send(doctypeHTML + (await import404Item(req, res)));
     } else {
       res.send('Error');
     }
