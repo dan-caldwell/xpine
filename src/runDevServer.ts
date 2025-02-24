@@ -3,10 +3,10 @@ import http from 'http';
 import express from 'express';
 import EventEmitter from 'events';
 import chokidar from 'chokidar';
-import { buildApp } from './scripts/build.js';
+import { buildApp } from './scripts/build';
 import path from 'path';
 import { config } from './util/get-config';
-import { setupEnv } from './util/env.js';
+import { setupEnv } from './util/env';
 
 setupEnv();
 

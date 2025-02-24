@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "main": "dist/index.js",
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.8",
@@ -29,6 +29,7 @@
   "type": "module",
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^22.13.5"
+    "@types/node": "^22.13.5",
+    "@types/request-ip": "^0.0.41"
   }
 }

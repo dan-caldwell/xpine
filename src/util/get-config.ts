@@ -1,5 +1,5 @@
 import path from 'path';
-import require from './require.js';
+import require from './require';
 import { XPineConfig } from '../../types';
 
 const rootDir = process.cwd();

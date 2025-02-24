@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { buildApp } from "./build.js";
+import { buildApp } from './build';
 
 buildApp();

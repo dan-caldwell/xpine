@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import { build } from 'esbuild';
-import { config } from '../util/get-config.js';
+import { config } from '../util/get-config';
 import path from 'path';
 
 // Extensions to look for in the bundle

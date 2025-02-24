@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { runDevServer } from "../runDevServer";
+import { runDevServer } from '../runDevServer';
 
 runDevServer();

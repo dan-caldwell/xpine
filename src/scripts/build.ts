@@ -7,7 +7,7 @@ import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
   removeClientScriptInTSXFile
-} from '../build/typescript-builder.js';
+} from '../build/typescript-builder';
 import { globSync } from 'glob';
 import postcss from 'postcss';
 // @ts-ignore
