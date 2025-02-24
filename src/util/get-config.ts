@@ -35,6 +35,9 @@ const configDefaults = {
   get serverDistDir() {
     return path.join(this.distDir, './server');
   },
+  get serverDistAppPath() {
+    return path.join(this.serverDistDir, './app.js');
+  },
   // Important dirs/paths
   get pagesDir() {
     return path.join(this.srcDir, './pages');

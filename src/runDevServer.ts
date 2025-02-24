@@ -4,17 +4,15 @@ import express from 'express';
 import EventEmitter from 'events';
 import chokidar from 'chokidar';
 import { buildApp } from './scripts/build.js';
-import { globSync } from 'glob';
 import path from 'path';
 import { config } from './util/get-config';
-import require from './util/require.js';
 import { setupEnv } from './util/env.js';
 
 setupEnv();
 
 export async function runDevServer() {
   process.env.NODE_ENV = 'development';
-  const startServer = require(config.serverAppPath);
+  const startServer = await import(config.serverDistAppPath + `?cache=${Date.now()}`);
 
   // Initial server set up
   await buildApp(true);
@@ -33,18 +31,9 @@ export async function runDevServer() {
       // We modified files in the server, restart the server
       appServer.server.close();
       await buildApp(true);
-      // Clear requires for startServer, then restart the server
-      delete require.cache[config.serverAppPath];
-      const startServer = require(config.serverAppPath);
+      const startServer = await import(config.serverDistAppPath + `?cache=${Date.now()}`);
       appServer = await startServer.default();
       return;
-    }
-    // Clear all import cache for components
-    const files = globSync(config.distDir + '/**/*.{tsx,ts,js,jsx}', {
-      ignore: [config.serverDistDir + '/**/*.*'],
-    });
-    for (const file of files) {
-      delete require.cache[file];
     }
     await buildApp(true);
     refreshEmitter.emit('refresh');

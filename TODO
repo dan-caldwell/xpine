@@ -1,3 +1,2 @@
 - npx create-xpine-app
 - xpine-dev
-  - hot reload not working for the server files
