@@ -7,12 +7,12 @@ import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
   removeClientScriptInTSXFile
-} from '../build/typescript-builder';
+} from '../build/typescript-builder.ts';
 import { globSync } from 'glob';
 import postcss from 'postcss';
 // @ts-ignore
 import tailwindPostcss from '@tailwindcss/postcss';
-import { config } from '../util/get-config';
+import { config } from '../util/get-config.ts';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];

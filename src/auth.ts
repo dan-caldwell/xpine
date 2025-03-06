@@ -1,5 +1,5 @@
 import jsonwebtoken from 'jsonwebtoken';
-import { ServerRequest } from '../types';
+import { ServerRequest } from '../types.ts';
 const { verify, sign, } = jsonwebtoken;
 
 export async function signUser(email: string, username: string) {

@@ -3,6 +3,7 @@
   "version": "0.0.6",
   "main": "dist/index.js",
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.758.0",
     "@tailwindcss/postcss": "^4.0.8",
     "builtin-modules": "^4.0.0",
     "chokidar": "^4.0.3",
@@ -24,12 +25,14 @@
     "url": "git://github.com/dan-caldwell/xpine.git"
   },
   "scripts": {
-    "build": "tsx ./src/scripts/build-module.ts"
+    "build": "tsx ./src/scripts/build-module.ts && npm run build:types",
+    "build:types": "npx tsc --declaration index.ts --declarationDir dist/lib --emitDeclarationOnly --declarationMap --skipLibCheck --esModuleInterop --allowImportingTsExtensions --target esnext --moduleResolution NodeNext --module NodeNext"
   },
   "bin": {
     "xpine-build": "dist/src/scripts/xpine-build.js",
     "xpine-dev": "dist/src/scripts/xpine-dev.js"
   },
+  "types": "dist/lib/index.d.ts",
   "type": "module",
   "devDependencies": {
     "@types/express": "^5.0.0",

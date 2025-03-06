@@ -1,6 +1,6 @@
 import path from 'path';
-import require from './require';
-import { XPineConfig } from '../../types';
+import require from './require.ts';
+import { XPineConfig } from '../../types.ts';
 
 const rootDir = process.cwd();
 

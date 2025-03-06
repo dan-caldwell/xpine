@@ -21,29 +21,24 @@
     "isolatedModules": true,
     "jsxImportSource": "xpine",
     "incremental": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    // Generate d.ts files
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "declarationMap": true,
+    "types": []
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "postcss.config.mjs",
-    "tailwind.config.js",
-    "eslint.config.mjs",
-    "index.ts",
-    "src/runDevServer.ts",
-    "src/express.ts",
-    "src/scripts/build.ts",
-    "src/auth.ts",
-    "src/util/require.ts",
-    "src/util/get-config.ts",
-    "src/util/env.ts",
-    "src/scripts/xpine-dev.ts",
-    "src/scripts/xpine-build.ts",
-    "src/build/typescript-builder.ts"
+    "src/**/*.ts",
+    "index.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist-frontend",
+    "./node_modules",
+    "./node_modules/*",
+    "./node_modules/@types/node/index.d.ts",
+    "dist",
     "**/*.js"
   ],
 }
