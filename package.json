@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.9",
+  "version": "0.0.12",
   "main": "dist/index.js",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.758.0",
@@ -32,7 +32,7 @@
     "xpine-build": "dist/src/scripts/xpine-build.js",
     "xpine-dev": "dist/src/scripts/xpine-dev.js"
   },
-  "types": "dist/lib/index.d.ts",
+  "types": "dist/index.d.ts",
   "type": "module",
   "devDependencies": {
     "@types/express": "^5.0.0",

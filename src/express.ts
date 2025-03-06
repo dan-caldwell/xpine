@@ -1,9 +1,9 @@
 import express, { NextFunction, Express, Request, Response } from 'express';
 import { globSync } from 'glob';
-import { config } from './util/get-config.ts';
-import { verifyUser } from './auth.ts';
+import { config } from './util/get-config';
+import { verifyUser } from './auth';
 import requestIP from 'request-ip';
-import { ServerRequest } from '../types.ts';
+import { ServerRequest } from '../types';
 
 const doctypeHTML = '<!DOCTYPE html>';
 

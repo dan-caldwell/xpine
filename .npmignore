@@ -146,3 +146,4 @@ cdk.out
 cdk.context.json
 *.pem
 *.key
+index.ts

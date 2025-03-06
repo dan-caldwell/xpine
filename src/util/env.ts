@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import { config } from './get-config.ts';
+import { config } from './get-config';
 // import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 
 export function setupEnv() {
