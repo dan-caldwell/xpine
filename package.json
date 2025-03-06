@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.7",
+  "version": "0.0.9",
   "main": "dist/index.js",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.758.0",
@@ -26,7 +26,7 @@
   },
   "scripts": {
     "build": "tsx ./src/scripts/build-module.ts && npm run build:types",
-    "build:types": "npx tsc --declaration index.ts --declarationDir dist/lib --emitDeclarationOnly --declarationMap --skipLibCheck --esModuleInterop --allowImportingTsExtensions --target esnext --moduleResolution NodeNext --module NodeNext"
+    "build:types": "sh ./src/scripts/build-types.sh"
   },
   "bin": {
     "xpine-build": "dist/src/scripts/xpine-build.js",
