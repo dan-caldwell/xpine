@@ -30,7 +30,14 @@ export default {}
 
 ## Env
 
-`import { setupEnv } from 'xpine';`
+```
+import { setupEnv } from 'xpine';
+
+await setupEnv();
+
+```
+
+setupEnv also supports AWS secrets manager. Simply add SECRETS_NAME=your_aws_secret_name to your .env.{stage} file
 
 ## Router
 

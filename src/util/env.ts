@@ -1,51 +1,32 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { config } from './get-config';
-// import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
+import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 
-export function setupEnv() {
-  dotenv.config({ path: path.join(config.rootDir, `./.env.${process.env.STAGE || 'dev'}`),});
+export async function setupEnv() {
+  if (process.env.HAS_SETUP_ENV) return;
+  dotenv.config({ path: path.join(config.rootDir, `./.env.${process.env.STAGE || 'dev'}`), });
+  await loadSecretsManagerSecrets();
+  process.env.HAS_SETUP_ENV = 'true';
 }
 
-// async function loadSecretsManagerSecrets() {
-
-// }
-
-// function getSecretValue() {
-//   const client = new SecretsManagerClient({ region: "REGION" });
-
-// }
-
-// const getSecretValue = async () => {
-//   const region = process.env.REGION
-//   const env = process.env.ENV || 'dev'
-//   const secretPath = env === 'prod' ? 'prod' : 'dev'
-//   const secretName = `[PROJECT]/amplify-${secretPath}/${env}`
- 
-//   var client = new AWS.SecretsManager({ region })
- 
-//   return new Promise((resolve, reject) => {
-//     client.getSecretValue({ SecretId: secretName }, function(err, data) {
-//       if (err) {
-//         reject(err)
-//       } else {
-//         let secret
-//         if ('SecretString' in data) {
-//           secret = data.SecretString
-//         } else {
-//           let buff = new Buffer(data.SecretBinary, 'base64')
-//           secret = buff.toString('ascii')
-//         }
-//         resolve(JSON.parse(secret))
-//       }
-//     })
-//   })
-// }
- 
-// const setSecretEnvs = async () => {
-//   const secrets = await getSecretValue()
-//   Object.keys(secrets).forEach(function(key) {
-//     process.env[key] = secrets[key]
-//   })
-//   return secrets
-// }
+async function loadSecretsManagerSecrets() {
+  // Ensure the SECRET_NAME environment variable is set
+  if (!process.env.SECRET_NAME) return;
+  try {
+    const client = new SecretsManagerClient();
+    const command = new GetSecretValueCommand({
+      SecretId: process.env.SECRET_NAME,
+    });
+    const response = await client.send(command);
+    if (!response?.SecretString) throw Error;
+    const secretValue = JSON.parse(response.SecretString);
+    if (!secretValue || typeof secretValue !== 'object') throw Error;
+    Object.keys(secretValue).forEach((key: string) => {
+      process.env[key] = secretValue[key];
+    });
+  } catch (err) {
+    console.error(`Could not load secret: ${process.env.SECRET_NAME}`);
+    return null;
+  }
+}

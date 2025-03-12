@@ -8,7 +8,7 @@ import path from 'path';
 import { config } from './util/get-config';
 import { setupEnv } from './util/env';
 
-setupEnv();
+await setupEnv();
 
 export async function runDevServer() {
   process.env.NODE_ENV = 'development';
