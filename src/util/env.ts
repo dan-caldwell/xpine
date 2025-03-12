@@ -25,6 +25,7 @@ async function loadSecretsManagerSecrets() {
     Object.keys(secretValue).forEach((key: string) => {
       process.env[key] = secretValue[key];
     });
+    client.destroy();
   } catch (err) {
     console.error(`Could not load secret: ${process.env.SECRET_NAME}`);
     return null;
