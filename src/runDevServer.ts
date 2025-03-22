@@ -12,11 +12,11 @@ await setupEnv();
 
 export async function runDevServer() {
   process.env.NODE_ENV = 'development';
-  const startServer = await import(config.serverDistAppPath + `?cache=${Date.now()}`);
+  const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
 
   // Initial server set up
   await buildApp(true);
-  let appServer = await startServer.default();
+  let appServer = await startServer();
 
   // Watch files
   const watcher = chokidar.watch(config.srcDir, {
@@ -31,8 +31,8 @@ export async function runDevServer() {
       // We modified files in the server, restart the server
       await appServer.server.close();
       await buildApp(true);
-      const startServer = await import(config.serverDistAppPath + `?cache=${Date.now()}`);
-      appServer = await startServer.default();
+      const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
+      appServer = await startServer();
       return;
     }
     await buildApp(true);

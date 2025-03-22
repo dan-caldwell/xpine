@@ -45,6 +45,7 @@ export async function createRouter() {
     });
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       try {
+        console.log({ routeItem, route, });
         // Check if it's a string response from the routeItem or is a different response
         if (routeItem) {
           if (isJSX) {
