@@ -13,12 +13,15 @@ import postcss from 'postcss';
 // @ts-ignore
 import tailwindPostcss from '@tailwindcss/postcss';
 import { config } from '../util/get-config';
+import { getXPineDistDir } from '../util/require';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
 const packageJson = JSON.parse(fs.readFileSync(config.packageJsonPath, 'utf-8'));
 const allPackages = Object.keys(packageJson.devDependencies).concat(Object.keys(packageJson.dependencies));
 const allPackagesIncludingNode = allPackages.concat(builtinModules);
+
+const xpineDistDir = getXPineDistDir();
 
 export async function buildApp(isDev = false) {
   try {
@@ -162,13 +165,13 @@ async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: bool
 }
 
 function writeDevServerClientSideCode(tempFilePath: string) {
-  const devServerPath = path.join(import.meta.dirname, '../static/dev-server.js');
+  const devServerPath = path.join(xpineDistDir, './src/static/dev-server.js');
   const content = fs.readFileSync(devServerPath, 'utf-8');
   fs.appendFileSync(tempFilePath, `\n` + content);
 }
 
 function writeSpaClientSideCode(tempFilePath: string) {
-  const spaPath = path.join(import.meta.dirname, '../static/spa.js');
+  const spaPath = path.join(xpineDistDir, './src/static/spa.js');
   const content = fs.readFileSync(spaPath, 'utf-8');
   fs.appendFileSync(tempFilePath, `\n` + content);
 }

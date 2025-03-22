@@ -1,5 +1,9 @@
 import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
+export default createRequire(import.meta.url);
 
-export default require;
+export function getXPineDistDir() {
+  const dir = import.meta.dirname;
+  const splitDir = dir.split('/xpine/dist/');
+  return splitDir[0] + '/xpine/dist';
+}

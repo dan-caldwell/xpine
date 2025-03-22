@@ -29,7 +29,7 @@ export async function runDevServer() {
       ['add', 'unlink'].includes(event) && path.startsWith(config.pagesDir);
     if (shouldReloadServer) {
       // We modified files in the server, restart the server
-      appServer.server.close();
+      await appServer.server.close();
       await buildApp(true);
       const startServer = await import(config.serverDistAppPath + `?cache=${Date.now()}`);
       appServer = await startServer.default();
