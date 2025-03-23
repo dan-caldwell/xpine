@@ -77,7 +77,7 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
               }
               let outputPath = args.path + (existsAsFile ? '' : '/index') + '.js';
               outputPath = args.path.endsWith('.js') || args.path.endsWith('.mjs') ? args.path : outputPath;
-              return { path: outputPath, external: true, };
+              return { path: outputPath + (isDev ? `?cache=${Date.now()}` : ''), external: true, };
             }
           });
         },
