@@ -14,6 +14,7 @@ import postcss from 'postcss';
 import tailwindPostcss from '@tailwindcss/postcss';
 import { config } from '../util/get-config';
 import { getXPineDistDir } from '../util/require';
+import postcssRemoveLayers from '../util/postcss/remove-layers';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -228,7 +229,7 @@ export async function buildCSS() {
   const cssFiles = globSync(config.srcDir + '/**/*.css');
   for (const file of cssFiles) {
     const fileContents = fs.readFileSync(file, 'utf-8');
-    const result = await postcss([tailwindPostcss()]).process(fileContents, { from: file, });
+    const result = await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(fileContents, { from: file, });
     // Write to dist folder
     const newPath = file.replace(config.srcDir, config.distDir);
     fs.ensureFileSync(newPath);
