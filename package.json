@@ -25,12 +25,15 @@
     "url": "git://github.com/dan-caldwell/xpine.git"
   },
   "scripts": {
-    "build": "tsx ./src/scripts/build-module.ts && npm run build:types",
-    "build:types": "sh ./src/scripts/build-types.sh"
+    "build": "tsx ./src/scripts/run-build-module.ts && npm run build:types",
+    "build:types": "sh ./src/scripts/build-types.sh",
+    "xpine-dev-server": "tsx ./src/scripts/xpine-dev-server.ts"
   },
   "bin": {
     "xpine-build": "dist/src/scripts/xpine-build.js",
-    "xpine-dev": "dist/src/scripts/xpine-dev.js"
+    "xpine-dev": "dist/src/scripts/xpine-dev.js",
+    "xpine-build:debug": "tsx ./src/scripts/xpine-build.ts",
+    "xpine-dev:debug": "tsx ./src/scripts/xpine-dev.ts"
   },
   "types": "dist/index.d.ts",
   "type": "module",

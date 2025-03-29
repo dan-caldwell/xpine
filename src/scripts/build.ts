@@ -5,6 +5,7 @@ import builtinModules from 'builtin-modules';
 import ts from 'typescript';
 import {
   convertEntryPointsToSingleFile,
+  createStaticFile,
   findDataAttributesAndFunctions,
   removeClientScriptInTSXFile
 } from '../build/typescript-builder';
@@ -87,7 +88,14 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
         name: 'insert-html-banner-and-remove-client-scripts',
         setup(build) {
           build.onLoad({ filter: /.tsx/, }, args => {
-            const cleanedContent = removeClientScriptInTSXFile(args.path);
+            const content = fs.readFileSync(args.path, 'utf-8');
+            const source = ts.createSourceFile(
+              args.path,
+              content,
+              ts.ScriptTarget.Latest
+            );
+            const cleanedContent = removeClientScriptInTSXFile(args.path, source);
+            createStaticFile(args.path, source);
             const htmlImportStart = 'import { html } from \'xpine\';\n';
             const newContent = `${htmlImportStart}${cleanedContent.content}`;
             componentData.push({

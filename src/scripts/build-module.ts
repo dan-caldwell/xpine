@@ -31,6 +31,5 @@ export async function buildXPine() {
     minify: false,
     plugins: [],
   });
+  console.log('Built xpine');
 }
-
-buildXPine();
