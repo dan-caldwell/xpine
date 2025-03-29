@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.16",
+  "version": "0.0.20",
   "main": "dist/index.js",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.758.0",
@@ -13,7 +13,7 @@
     "express-ws": "^5.0.2",
     "fs-extra": "^11.3.0",
     "glob": "^11.0.1",
-    "html": "file:./modules/html",
+    "html": "file:./dist/src/util/html.js",
     "jsonwebtoken": "^9.0.2",
     "postcss": "^8.5.3",
     "request-ip": "^3.3.0",
@@ -31,9 +31,7 @@
   },
   "bin": {
     "xpine-build": "dist/src/scripts/xpine-build.js",
-    "xpine-dev": "dist/src/scripts/xpine-dev.js",
-    "xpine-build:debug": "tsx ./src/scripts/xpine-build.ts",
-    "xpine-dev:debug": "tsx ./src/scripts/xpine-dev.ts"
+    "xpine-dev": "dist/src/scripts/xpine-dev.js"
   },
   "types": "dist/index.d.ts",
   "type": "module",
