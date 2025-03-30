@@ -236,20 +236,51 @@ export async function buildStaticFiles(componentData: any[]) {
     const config = (await import(sourcePathToDistPath(component.configFile) + `?cache=${Date.now()}`)).default;
     const shouldBeStatic = config?.staticPaths;
     if (shouldBeStatic) {
+      const componentFileName: string = component.path.split('/').pop().replace(/\.tsx$/, '').replace(/\.jsx$/, '');
       const builtComponentPath = sourcePathToDistPath(component.path);
+      const componentDynamicPath = getComponentDynamicPath(componentFileName);
+      const componentFn = (await import(builtComponentPath + `?cache=${Date.now()}`)).default;
+      const outputPath = path.dirname(builtComponentPath);
       if (typeof shouldBeStatic === 'boolean') {
         // Build as-is
+        try {
+          const staticComponentOutput = await componentFn();
+          // Write file
+          fs.writeFileSync(path.join(outputPath, './index.html'), staticComponentOutput);
+        } catch (err) {
+          console.error(err);
+          console.log('Could not build static component', component.path);
+        }
       } else if (typeof shouldBeStatic === 'function') {
+        const dynamicPaths = await shouldBeStatic();
+        for (const dynamicPath of dynamicPaths) {
+          try {
+            const staticComponentOutput = await componentFn({
+              params: {
+                ...(componentDynamicPath ? { [componentDynamicPath]: dynamicPath } : {})
+              }
+            });
+            // Write file
+            const updatedOutDir = path.join(outputPath, `./${dynamicPath}`);
+            fs.ensureDirSync(updatedOutDir);
+            fs.writeFileSync(path.join(updatedOutDir, `./index.html`), staticComponentOutput);
+          } catch (err) {
+            console.log('Could not build static component', component.path);
+            console.error(err);
+          }
+        }
         // Get the paths from the shouldBeStatic function and then build each path
       }
-      console.log({
-        builtComponentPath,
-        config,
-      });
     }
   }
 }
 
 export function sourcePathToDistPath(sourcePath: string) {
   return sourcePath.replace(config.srcDir, config.distDir).replace(/\.ts$/, '.js').replace(/\.tsx$/, '.js');
+}
+
+export function getComponentDynamicPath(componentPath: string) {
+  const match = componentPath.match(/^\[(.*)\]$/);
+  if (!match) return null;
+  return match[1];
 }

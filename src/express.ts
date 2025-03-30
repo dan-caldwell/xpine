@@ -11,6 +11,9 @@ export async function createRouter() {
   const methods = ['get', 'post', 'put', 'patch', 'delete'];
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
+  console.log(config.distPagesDir);
+  const staticRoutes = globSync(config.distPagesDir + '/**/*.html');
+  console.log(staticRoutes);
   const routeMap = routes.map(route => {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
