@@ -12,12 +12,16 @@ export async function createRouter() {
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
   const routeMap = routes.map(route => {
+    const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
+    if (routeFormatted.endsWith('+config')) return;
+    // Replace index
+    const routeFormattedWithIndex = routeFormatted.replace(/\/index$/g, '')
     return {
-      route: route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '').replace('/index', '/'),
+      route: routeFormattedWithIndex,
       path: route.replace(config.srcDir, config.distDir).replace('.tsx', '.js').replace('.ts', '.js'),
       originalRoute: route,
     };
-  });
+  }).filter(Boolean);
   const routeResults = [];
 
   for (const route of routeMap) {

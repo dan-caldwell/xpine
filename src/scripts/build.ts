@@ -1,13 +1,10 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { build } from 'esbuild';
-import builtinModules from 'builtin-modules';
 import ts from 'typescript';
 import {
   convertEntryPointsToSingleFile,
-  createStaticFile,
   findDataAttributesAndFunctions,
-  removeClientScriptInTSXFile
 } from '../build/typescript-builder';
 import { globSync } from 'glob';
 import postcss from 'postcss';
@@ -16,12 +13,14 @@ import tailwindPostcss from '@tailwindcss/postcss';
 import { config } from '../util/get-config';
 import { getXPineDistDir } from '../util/require';
 import postcssRemoveLayers from '../util/postcss/remove-layers';
+import transformTSXFiles from '../build/esbuild/transformTSXFiles';
+import addDotJS from '../build/esbuild/addDotJS';
+import getDataFiles from '../build/esbuild/getDataFiles';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
 const packageJson = JSON.parse(fs.readFileSync(config.packageJsonPath, 'utf-8'));
 const allPackages = Object.keys(packageJson.devDependencies).concat(Object.keys(packageJson.dependencies));
-const allPackagesIncludingNode = allPackages.concat(builtinModules);
 
 const xpineDistDir = getXPineDistDir();
 
@@ -34,6 +33,8 @@ export async function buildApp(isDev = false) {
     fs.removeSync(config.distTempFolder);
     await buildCSS();
     await buildPublicFolderSymlinks();
+    // Build static files if there are any
+    await buildStaticFiles(componentData);
   } catch (err) {
     console.error('Build failed');
     console.error(err);
@@ -43,10 +44,17 @@ export async function buildApp(isDev = false) {
 async function buildAppFiles(files: string[], isDev?: boolean) {
   const componentData = [];
   const dataFiles = [];
+
+  const pageConfigFiles = files.filter((file) => {
+    const fileName = file.split('/').at(-1).split('.').shift();
+    return fileName === '+config';
+  });
+
   // Filter out client side files and files that aren't of the allowed extensions
   const backendFiles = files
     .filter((file) => extensions.find(ext => file.endsWith(ext)))
     .filter((file) => !file.startsWith(config.publicDir));
+
   fs.ensureDirSync(config.distDir);
   // Build backend/SSR TSX modules
   await build({
@@ -60,72 +68,9 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
     jsx: 'transform',
     minify: !isDev,
     plugins: [
-      {
-        name: 'add-dot-js',
-        setup(build) {
-          build.onResolve({ filter: /.*/, }, args => {
-            const hasAtSign = args.path.startsWith('@');
-            const isPackage = hasAtSign ?
-              allPackagesIncludingNode.includes(args.path) :
-              allPackagesIncludingNode.includes(args.path.split('/').shift());
-            if (args.importer && !isPackage) {
-              // If we're doing an index import we need /index.js
-              const calculatedDir = path.join(args.resolveDir, args.path);
-              let existsAsFile = false;
-              for (const extension of extensions) {
-                const asFile = calculatedDir + extension;
-                const exists = fs.existsSync(asFile);
-                if (exists) existsAsFile = true;
-              }
-              let outputPath = args.path + (existsAsFile ? '' : '/index') + '.js';
-              outputPath = args.path.endsWith('.js') || args.path.endsWith('.mjs') ? args.path : outputPath;
-              return { path: outputPath + (isDev ? `?cache=${Date.now()}` : ''), external: true, };
-            }
-          });
-        },
-      },
-      {
-        name: 'insert-html-banner-and-remove-client-scripts',
-        setup(build) {
-          build.onLoad({ filter: /.tsx/, }, args => {
-            const content = fs.readFileSync(args.path, 'utf-8');
-            const source = ts.createSourceFile(
-              args.path,
-              content,
-              ts.ScriptTarget.Latest
-            );
-            const cleanedContent = removeClientScriptInTSXFile(args.path, source);
-            createStaticFile(args.path, source);
-            const htmlImportStart = 'import { html } from \'xpine\';\n';
-            const newContent = `${htmlImportStart}${cleanedContent.content}`;
-            componentData.push({
-              ...args,
-              contents: `${htmlImportStart}${cleanedContent.fullContent}`,
-              clientContent: cleanedContent.clientContent,
-            });
-            return {
-              contents: newContent,
-              loader: 'tsx',
-            };
-          });
-        },
-      },
-      {
-        name: 'get-data-files',
-        setup(build) {
-          build.onLoad({ filter: /\.data\.(js|mjs|ts)$/, }, args => {
-            const contents = fs.readFileSync(args.path, 'utf-8');
-            dataFiles.push({
-              ...args,
-              contents,
-            });
-            return {
-              contents,
-              loader: 'ts',
-            };
-          });
-        },
-      }
+      addDotJS(allPackages, extensions, isDev),
+      transformTSXFiles(componentData, pageConfigFiles),
+      getDataFiles(dataFiles),
     ],
   });
   await logSize(config.distDir, 'app');
@@ -283,4 +228,28 @@ export async function logSize(pathName: string, type: 'app' | 'client' | 'css', 
     return current.size + total;
   }, 0);
   console.info(`[${totalSize.toFixed(3)} MB] Built ${type}`);
+}
+
+export async function buildStaticFiles(componentData: any[]) {
+  const componentsWithConfigs = componentData.filter(item => item.configFile);
+  for (const component of componentsWithConfigs) {
+    const config = (await import(sourcePathToDistPath(component.configFile) + `?cache=${Date.now()}`)).default;
+    const shouldBeStatic = config?.staticPaths;
+    if (shouldBeStatic) {
+      const builtComponentPath = sourcePathToDistPath(component.path);
+      if (typeof shouldBeStatic === 'boolean') {
+        // Build as-is
+      } else if (typeof shouldBeStatic === 'function') {
+        // Get the paths from the shouldBeStatic function and then build each path
+      }
+      console.log({
+        builtComponentPath,
+        config,
+      });
+    }
+  }
+}
+
+export function sourcePathToDistPath(sourcePath: string) {
+  return sourcePath.replace(config.srcDir, config.distDir).replace(/\.ts$/, '.js').replace(/\.tsx$/, '.js');
 }
