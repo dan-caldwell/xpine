@@ -42,6 +42,9 @@ const configDefaults = {
   get pagesDir() {
     return path.join(this.srcDir, './pages');
   },
+  get distPagesDir() {
+    return path.join(this.distDir, './pages');
+  },
   get publicDir() {
     return path.join(this.srcDir, './public');
   },

@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.16",
+  "version": "0.0.21",
   "main": "dist/index.js",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.758.0",
@@ -13,7 +13,6 @@
     "express-ws": "^5.0.2",
     "fs-extra": "^11.3.0",
     "glob": "^11.0.1",
-    "html": "file:./modules/html",
     "jsonwebtoken": "^9.0.2",
     "postcss": "^8.5.3",
     "request-ip": "^3.3.0",
@@ -25,8 +24,9 @@
     "url": "git://github.com/dan-caldwell/xpine.git"
   },
   "scripts": {
-    "build": "tsx ./src/scripts/build-module.ts && npm run build:types",
-    "build:types": "sh ./src/scripts/build-types.sh"
+    "build": "tsx ./src/scripts/run-build-module.ts && npm run build:types",
+    "build:types": "sh ./src/scripts/build-types.sh",
+    "xpine-dev-server": "tsx ./src/scripts/xpine-dev-server.ts"
   },
   "bin": {
     "xpine-build": "dist/src/scripts/xpine-build.js",

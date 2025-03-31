@@ -4,6 +4,9 @@ import { config } from './util/get-config';
 import { verifyUser } from './auth';
 import requestIP from 'request-ip';
 import { ServerRequest } from '../types';
+import fs from 'fs-extra';
+import path from 'path';
+import regex from './util/regex';
 
 const doctypeHTML = '<!DOCTYPE html>';
 
@@ -12,12 +15,16 @@ export async function createRouter() {
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
   const routeMap = routes.map(route => {
+    const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
+    if (routeFormatted.endsWith('+config')) return;
+    // Replace index
+    const routeFormattedWithIndex = routeFormatted.replace(/\/index$/g, '')
     return {
-      route: route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '').replace('/index', '/'),
+      route: routeFormattedWithIndex,
       path: route.replace(config.srcDir, config.distDir).replace('.tsx', '.js').replace('.ts', '.js'),
       originalRoute: route,
     };
-  });
+  }).filter(Boolean);
   const routeResults = [];
 
   for (const route of routeMap) {
@@ -27,12 +34,12 @@ export async function createRouter() {
     // Configure result,methods for the route
     const slugRoute = route.route.toLowerCase().replace(/[ ]/g, '');
     const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
-    const isDynamicRoute = slugRoute.match(/\[(.*)\]/g);
+    const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
     let formattedRouteItem = slugRoute;
     if (foundMethod) formattedRouteItem = formattedRouteItem.split('.').shift();
     // Handle dynamic routing
     if (isDynamicRoute) {
-      const result = [...formattedRouteItem.matchAll(/(\[)(.*?)(\])/g)];
+      const result = [...formattedRouteItem.matchAll(regex.dynamicRoutes)];
       for (const match of result) {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }
@@ -45,6 +52,11 @@ export async function createRouter() {
     });
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       try {
+        const staticPath = routeHasStaticPath(formattedRouteItem, req.params);
+        if (staticPath && process.env.NODE_ENV !== 'development') {
+          res.sendFile(staticPath);
+          return;
+        }
         // Check if it's a string response from the routeItem or is a different response
         if (routeItem) {
           if (isJSX) {
@@ -117,4 +129,17 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
       res.send('Error');
     }
   });
+}
+
+export function routeHasStaticPath(route: string, params: { [key: string]: string }): string | false {
+  const paramEntries = Object.entries(params);
+  let routeToStaticPath = route;
+  for (const [key, value] of paramEntries) {
+    routeToStaticPath = routeToStaticPath.replace(`:${key}`, value);
+  }
+  routeToStaticPath += '/index.html';
+  // Check if path exists
+  const outputPath = path.join(config.distPagesDir, routeToStaticPath);
+  if (fs.existsSync(outputPath)) return outputPath;
+  return false;
 }

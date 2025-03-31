@@ -112,13 +112,8 @@ export function convertEntryPointsToSingleFile(entryPoints: string[], tempWriteP
   );
 }
 
-export function removeClientScriptInTSXFile(pathName: string) {
+export function removeClientScriptInTSXFile(pathName: string, source: ts.SourceFile) {
   const content = fs.readFileSync(pathName, 'utf-8');
-  const source = ts.createSourceFile(
-    pathName,
-    content,
-    ts.ScriptTarget.Latest
-  );
   let toRemoveFrom: number;
   let clientDataStart: number;
   const clientImportsToHoist = [];
@@ -164,6 +159,18 @@ export function removeClientScriptInTSXFile(pathName: string) {
     toRemoveFrom,
     clientDataStart,
   };
+}
+
+export function createStaticFile(pathName: string, source: ts.SourceFile) {
+  source.forEachChild(child => {
+    if (child.kind === ts.SyntaxKind.ExpressionStatement) {
+      const text = child.getText(source);
+      const cleanedText = text.replace(/["';]/g, '');
+      if (cleanedText === 'xpine-static') {
+        console.log('make this file static', pathName);
+      }
+    }
+  })
 }
 
 export function printRecursiveFrom(
