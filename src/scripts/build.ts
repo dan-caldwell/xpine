@@ -35,7 +35,7 @@ export async function buildApp(isDev = false) {
     await buildCSS();
     await buildPublicFolderSymlinks();
     // Build static files if there are any
-    await buildStaticFiles(componentData);
+    if (!isDev) await buildStaticFiles(componentData);
   } catch (err) {
     console.error('Build failed');
     console.error(err);

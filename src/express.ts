@@ -4,7 +4,8 @@ import { config } from './util/get-config';
 import { verifyUser } from './auth';
 import requestIP from 'request-ip';
 import { ServerRequest } from '../types';
-import { routePathToStaticFiles } from './util/paths';
+import fs from 'fs-extra';
+import path from 'path';
 import regex from './util/regex';
 
 const doctypeHTML = '<!DOCTYPE html>';
@@ -13,7 +14,6 @@ export async function createRouter() {
   const methods = ['get', 'post', 'put', 'patch', 'delete'];
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
-  const staticRoutes = globSync(config.distPagesDir + '/**/*.html');
   const routeMap = routes.map(route => {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
@@ -28,7 +28,6 @@ export async function createRouter() {
   const routeResults = [];
 
   for (const route of routeMap) {
-    routePathToStaticFiles(route.path, staticRoutes);
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
     // Import route
     const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
@@ -53,6 +52,11 @@ export async function createRouter() {
     });
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       try {
+        const staticPath = routeHasStaticPath(formattedRouteItem, req.params);
+        if (staticPath && process.env.NODE_ENV !== 'development') {
+          res.sendFile(staticPath);
+          return;
+        }
         // Check if it's a string response from the routeItem or is a different response
         if (routeItem) {
           if (isJSX) {
@@ -125,4 +129,17 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
       res.send('Error');
     }
   });
+}
+
+export function routeHasStaticPath(route: string, params: { [key: string]: string }): string | false {
+  const paramEntries = Object.entries(params);
+  let routeToStaticPath = route;
+  for (const [key, value] of paramEntries) {
+    routeToStaticPath = routeToStaticPath.replace(`:${key}`, value);
+  }
+  routeToStaticPath += '/index.html';
+  // Check if path exists
+  const outputPath = path.join(config.distPagesDir, routeToStaticPath);
+  if (fs.existsSync(outputPath)) return outputPath;
+  return false;
 }

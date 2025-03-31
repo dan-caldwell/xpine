@@ -12,10 +12,12 @@ await setupEnv();
 
 export async function runDevServer() {
   process.env.NODE_ENV = 'development';
-  const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
 
   // Initial server set up
   await buildApp(true);
+
+  const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
+
   let appServer = await startServer();
 
   // Watch files
