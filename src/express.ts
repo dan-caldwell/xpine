@@ -5,6 +5,7 @@ import { verifyUser } from './auth';
 import requestIP from 'request-ip';
 import { ServerRequest } from '../types';
 import { routePathToStaticFiles } from './util/paths';
+import regex from './util/regex';
 
 const doctypeHTML = '<!DOCTYPE html>';
 
@@ -26,9 +27,6 @@ export async function createRouter() {
   }).filter(Boolean);
   const routeResults = [];
 
-  // console.log(staticRoutes);
-  // console.log(routeMap);
-
   for (const route of routeMap) {
     routePathToStaticFiles(route.path, staticRoutes);
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
@@ -37,12 +35,12 @@ export async function createRouter() {
     // Configure result,methods for the route
     const slugRoute = route.route.toLowerCase().replace(/[ ]/g, '');
     const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
-    const isDynamicRoute = slugRoute.match(/\[(.*)\]/g);
+    const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
     let formattedRouteItem = slugRoute;
     if (foundMethod) formattedRouteItem = formattedRouteItem.split('.').shift();
     // Handle dynamic routing
     if (isDynamicRoute) {
-      const result = [...formattedRouteItem.matchAll(/(\[)(.*?)(\])/g)];
+      const result = [...formattedRouteItem.matchAll(regex.dynamicRoutes)];
       for (const match of result) {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }

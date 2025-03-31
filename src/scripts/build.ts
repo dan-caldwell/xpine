@@ -16,6 +16,7 @@ import postcssRemoveLayers from '../util/postcss/remove-layers';
 import transformTSXFiles from '../build/esbuild/transformTSXFiles';
 import addDotJS from '../build/esbuild/addDotJS';
 import getDataFiles from '../build/esbuild/getDataFiles';
+import regex from '../util/regex';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -236,11 +237,26 @@ export async function buildStaticFiles(componentData: any[]) {
     const config = (await import(sourcePathToDistPath(component.configFile) + `?cache=${Date.now()}`)).default;
     const shouldBeStatic = config?.staticPaths;
     if (shouldBeStatic) {
-      const componentFileName: string = component.path.split('/').pop().replace(/\.tsx$/, '').replace(/\.jsx$/, '');
+      let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
+      const isDynamicRoute = component.path.match(regex.isDynamicRoute);
+      // Handle dynamic routing
+      if (isDynamicRoute) {
+        componentFileName = component.path
+          .split('/')
+          .filter((dir: string) => dir.match(regex.isDynamicRoute))
+          .join('/')
+          .replace(regex.endsWithJSX, '')
+          .replace(regex.endsWithTSX, '');
+      }
+
       const builtComponentPath = sourcePathToDistPath(component.path);
-      const componentDynamicPath = getComponentDynamicPath(componentFileName);
+      const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
       const componentFn = (await import(builtComponentPath + `?cache=${Date.now()}`)).default;
-      const outputPath = path.dirname(builtComponentPath);
+      const outputPath = componentDynamicPaths?.length ?
+        componentDynamicPaths.reduce((total, current) => {
+          return total.replace(`/[${current}]`, '')
+        }, path.dirname(builtComponentPath)) :
+        path.dirname(builtComponentPath);
       if (typeof shouldBeStatic === 'boolean') {
         // Build as-is
         try {
@@ -257,11 +273,11 @@ export async function buildStaticFiles(componentData: any[]) {
           try {
             const staticComponentOutput = await componentFn({
               params: {
-                ...(componentDynamicPath ? { [componentDynamicPath]: dynamicPath } : {})
+                ...(componentDynamicPaths?.length ? dynamicPath : {})
               }
             });
             // Write file
-            const updatedOutDir = path.join(outputPath, `./${dynamicPath}`);
+            const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
             fs.ensureDirSync(updatedOutDir);
             fs.writeFileSync(path.join(updatedOutDir, `./index.html`), staticComponentOutput);
           } catch (err) {
@@ -279,8 +295,12 @@ export function sourcePathToDistPath(sourcePath: string) {
   return sourcePath.replace(config.srcDir, config.distDir).replace(/\.ts$/, '.js').replace(/\.tsx$/, '.js');
 }
 
-export function getComponentDynamicPath(componentPath: string) {
-  const match = componentPath.match(/^\[(.*)\]$/);
-  if (!match) return null;
-  return match[1];
+export function getComponentDynamicPaths(componentPath: string): string[] {
+  const matches = [...componentPath.matchAll(regex.dynamicRoutes)];
+  if (!matches?.length) return null;
+  const output = [];
+  for (const match of matches) {
+    output.push(match[2]);
+  }
+  return output;
 }
