@@ -4,6 +4,7 @@ import { config } from './util/get-config';
 import { verifyUser } from './auth';
 import requestIP from 'request-ip';
 import { ServerRequest } from '../types';
+import { routePathToStaticFiles } from './util/paths';
 
 const doctypeHTML = '<!DOCTYPE html>';
 
@@ -11,9 +12,7 @@ export async function createRouter() {
   const methods = ['get', 'post', 'put', 'patch', 'delete'];
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
-  console.log(config.distPagesDir);
   const staticRoutes = globSync(config.distPagesDir + '/**/*.html');
-  console.log(staticRoutes);
   const routeMap = routes.map(route => {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
@@ -27,7 +26,11 @@ export async function createRouter() {
   }).filter(Boolean);
   const routeResults = [];
 
+  // console.log(staticRoutes);
+  // console.log(routeMap);
+
   for (const route of routeMap) {
+    routePathToStaticFiles(route.path, staticRoutes);
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
     // Import route
     const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
