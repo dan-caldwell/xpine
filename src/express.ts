@@ -8,8 +8,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import regex from './util/regex';
 import { getConfigFile, sourcePathToDistPath } from './util/config-file';
-
-const doctypeHTML = '<!DOCTYPE html>';
+import { doctypeHTML } from './util/constants';
 
 export async function createRouter() {
   const isDev = process.env.NODE_ENV === 'development';

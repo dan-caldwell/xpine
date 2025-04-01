@@ -1,2 +1,1 @@
-- content wrapper
-  - should work on SSR routes
+- is it possible to not import the routeItem in express.ts if the config is set to static?

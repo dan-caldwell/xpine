@@ -18,6 +18,7 @@ import addDotJS from '../build/esbuild/addDotJS';
 import getDataFiles from '../build/esbuild/getDataFiles';
 import regex from '../util/regex';
 import { sourcePathToDistPath } from '../util/config-file';
+import { doctypeHTML } from '../util/constants';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -236,11 +237,11 @@ export async function buildFilesWithConfigs(componentData: any[]) {
   const componentsWithConfigs = componentData.filter(item => item.configFile);
   for (const component of componentsWithConfigs) {
     const config = (await import(sourcePathToDistPath(component.configFile) + `?cache=${Date.now()}`)).default;
-    if (config?.staticPaths) buildStaticFiles(config.staticPaths, component);
+    if (config?.staticPaths) buildStaticFiles(config, component);
   }
 }
 
-export async function buildStaticFiles(shouldBeStatic: boolean | (() => { [key: string]: string }[]), component) {
+export async function buildStaticFiles(config: { [key: string]: any }, component) {
   let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
   const isDynamicRoute = component.path.match(regex.isDynamicRoute);
   // Handle dynamic routing
@@ -261,7 +262,7 @@ export async function buildStaticFiles(shouldBeStatic: boolean | (() => { [key: 
       return total.replace(`/[${current}]`, '')
     }, path.dirname(builtComponentPath)) :
     path.dirname(builtComponentPath);
-  if (typeof shouldBeStatic === 'boolean') {
+  if (typeof config?.staticPaths === 'boolean') {
     // Build as-is
     try {
       const staticComponentOutput = await componentFn();
@@ -271,19 +272,23 @@ export async function buildStaticFiles(shouldBeStatic: boolean | (() => { [key: 
       console.error(err);
       console.log('Could not build static component', component.path);
     }
-  } else if (typeof shouldBeStatic === 'function') {
-    const dynamicPaths = await shouldBeStatic();
+  } else if (typeof config?.staticPaths === 'function') {
+    const dynamicPaths = await config.staticPaths();
     for (const dynamicPath of dynamicPaths) {
       try {
-        const staticComponentOutput = await componentFn({
+        const req = {
           params: {
             ...(componentDynamicPaths?.length ? dynamicPath : {})
           }
-        });
+        };
+        const staticComponentOutput = await componentFn(req);
         // Write file
         const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
         fs.ensureDirSync(updatedOutDir);
-        fs.writeFileSync(path.join(updatedOutDir, `./index.html`), staticComponentOutput);
+        fs.writeFileSync(
+          path.join(updatedOutDir, `./index.html`), 
+          doctypeHTML + (config?.wrapper ? await config.wrapper(req, staticComponentOutput) : staticComponentOutput)
+        );
       } catch (err) {
         console.log('Could not build static component', component.path);
         console.error(err);
