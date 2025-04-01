@@ -7,6 +7,7 @@ import { ServerRequest } from '../types';
 import fs from 'fs-extra';
 import path from 'path';
 import regex from './util/regex';
+import { getConfigFile, sourcePathToDistPath } from './util/config-file';
 
 const doctypeHTML = '<!DOCTYPE html>';
 
@@ -26,11 +27,10 @@ export async function createRouter() {
     };
   }).filter(Boolean);
   const routeResults = [];
+  const configFiles = globSync(config.pagesDir + '/**/+config.{tsx,ts}');
 
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
-    // Import route
-    const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
     // Configure result,methods for the route
     const slugRoute = route.route.toLowerCase().replace(/[ ]/g, '');
     const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
@@ -44,6 +44,13 @@ export async function createRouter() {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }
     }
+    const configFileOriginalPath = getConfigFile(route.originalRoute, configFiles);
+    const configFileDistPath = configFileOriginalPath && sourcePathToDistPath(configFileOriginalPath);
+    const config = configFileDistPath ? (await import(configFileDistPath + `?cache=${Date.now()}`)).default : null;
+
+    // Import route
+    const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
+
     // Push to the route results array
     routeResults.push({
       formattedRouteItem,
@@ -60,7 +67,9 @@ export async function createRouter() {
         // Check if it's a string response from the routeItem or is a different response
         if (routeItem) {
           if (isJSX) {
-            res.send(doctypeHTML + (await routeItem(req, res)));
+            const originalResult = await routeItem(req, res);
+            const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
+            res.send(doctypeHTML + output);
           } else {
             await routeItem(req, res);
           }
@@ -69,7 +78,9 @@ export async function createRouter() {
         const defaultRouteImport = (await import(route.path + `?cache=${Date.now()}`)).default;
         // Require every time only if in development mode
         if (isJSX) {
-          res.send(doctypeHTML + (await defaultRouteImport(req, res)));
+          const originalResult = await defaultRouteImport(req, res);
+          const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
+          res.send(doctypeHTML + output);
         } else {
           await defaultRouteImport(req, res);
         }
