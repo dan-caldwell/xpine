@@ -1,7 +1,7 @@
 import { Request } from 'express';
 
 export type XPineConfig = {
-  [key: string]: string;
+  [key: string]: any;
 }
 
 export type TokenUser = {

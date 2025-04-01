@@ -12,6 +12,7 @@ import { getConfigFile, sourcePathToDistPath } from './util/config-file';
 const doctypeHTML = '<!DOCTYPE html>';
 
 export async function createRouter() {
+  const isDev = process.env.NODE_ENV === 'development';
   const methods = ['get', 'post', 'put', 'patch', 'delete'];
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
@@ -46,10 +47,10 @@ export async function createRouter() {
     }
     const configFileOriginalPath = getConfigFile(route.originalRoute, configFiles);
     const configFileDistPath = configFileOriginalPath && sourcePathToDistPath(configFileOriginalPath);
-    const config = configFileDistPath ? (await import(configFileDistPath + `?cache=${Date.now()}`)).default : null;
+    let config = configFileDistPath && !isDev ? (await import(configFileDistPath)).default : null;
 
     // Import route
-    const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
+    const routeItem = isDev ? null : (await import(route.path)).default;
 
     // Push to the route results array
     routeResults.push({
@@ -60,12 +61,12 @@ export async function createRouter() {
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       try {
         const staticPath = routeHasStaticPath(formattedRouteItem, req.params);
-        if (staticPath && process.env.NODE_ENV !== 'development') {
+        if (staticPath && !isDev) {
           res.sendFile(staticPath);
           return;
         }
         // Check if it's a string response from the routeItem or is a different response
-        if (routeItem) {
+        if (routeItem && !isDev) {
           if (isJSX) {
             const originalResult = await routeItem(req, res);
             const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
@@ -75,9 +76,11 @@ export async function createRouter() {
           }
           return;
         }
+
         const defaultRouteImport = (await import(route.path + `?cache=${Date.now()}`)).default;
         // Require every time only if in development mode
         if (isJSX) {
+          const config = configFileDistPath ? (await import(configFileDistPath + `?cache=${Date.now()}`)).default : null;
           const originalResult = await defaultRouteImport(req, res);
           const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
           res.send(doctypeHTML + output);
