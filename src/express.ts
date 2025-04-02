@@ -3,11 +3,11 @@ import { globSync } from 'glob';
 import { config } from './util/get-config';
 import { verifyUser } from './auth';
 import requestIP from 'request-ip';
-import { ServerRequest } from '../types';
+import { ConfigFile, ServerRequest } from '../types';
 import fs from 'fs-extra';
 import path from 'path';
 import regex from './util/regex';
-import { getConfigFile, sourcePathToDistPath } from './util/config-file';
+import { getCompleteConfig, getConfigFiles } from './util/config-file';
 import { doctypeHTML } from './util/constants';
 
 export async function createRouter() {
@@ -44,9 +44,8 @@ export async function createRouter() {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }
     }
-    const configFileOriginalPath = getConfigFile(route.originalRoute, configFiles);
-    const configFileDistPath = configFileOriginalPath && sourcePathToDistPath(configFileOriginalPath);
-    let config = configFileDistPath && !isDev ? (await import(configFileDistPath)).default : null;
+    const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
+    const config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
 
     // Import route
     const routeItem = isDev ? null : (await import(route.path)).default;
@@ -79,7 +78,7 @@ export async function createRouter() {
         const defaultRouteImport = (await import(route.path + `?cache=${Date.now()}`)).default;
         // Require every time only if in development mode
         if (isJSX) {
-          const config = configFileDistPath ? (await import(configFileDistPath + `?cache=${Date.now()}`)).default : null;
+          const config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
           const originalResult = await defaultRouteImport(req, res);
           const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
           res.send(doctypeHTML + output);

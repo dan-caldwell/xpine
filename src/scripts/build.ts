@@ -17,8 +17,9 @@ import transformTSXFiles from '../build/esbuild/transformTSXFiles';
 import addDotJS from '../build/esbuild/addDotJS';
 import getDataFiles from '../build/esbuild/getDataFiles';
 import regex from '../util/regex';
-import { sourcePathToDistPath } from '../util/config-file';
+import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
 import { doctypeHTML } from '../util/constants';
+import { ConfigFile } from '../../types';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -234,9 +235,10 @@ export async function logSize(pathName: string, type: 'app' | 'client' | 'css', 
 }
 
 export async function buildFilesWithConfigs(componentData: any[]) {
-  const componentsWithConfigs = componentData.filter(item => item.configFile);
+  const now = Date.now();
+  const componentsWithConfigs = componentData.filter(item => item.configFiles);
   for (const component of componentsWithConfigs) {
-    const config = (await import(sourcePathToDistPath(component.configFile) + `?cache=${Date.now()}`)).default;
+    const config: ConfigFile = await getCompleteConfig(component.configFiles, now);
     if (config?.staticPaths) buildStaticFiles(config, component);
   }
 }
@@ -267,7 +269,10 @@ export async function buildStaticFiles(config: { [key: string]: any }, component
     try {
       const staticComponentOutput = await componentFn();
       // Write file
-      fs.writeFileSync(path.join(outputPath, './index.html'), staticComponentOutput);
+      fs.writeFileSync(
+        path.join(outputPath, `./index.html`), 
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ params: {} }, staticComponentOutput) : staticComponentOutput)
+      );
     } catch (err) {
       console.error(err);
       console.log('Could not build static component', component.path);

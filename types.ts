@@ -12,3 +12,8 @@ export type TokenUser = {
 export type ServerRequest = Request & {
   user?: TokenUser;
 }
+
+export type ConfigFile = {
+  staticPaths?: boolean | (() => Promise<string[]>);
+  wrapper?: (req: ServerRequest, children: any) => Promise<any>;
+}
