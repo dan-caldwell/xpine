@@ -1,3 +1,3 @@
-- is it possible to not import the routeItem in express.ts if the config is set to static?
-- add types for configs
 - tests
+- dev server crashes if too many files are changed at the same time
+- fix flash of unstyled content
