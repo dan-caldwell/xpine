@@ -19,7 +19,7 @@ import getDataFiles from '../build/esbuild/getDataFiles';
 import regex from '../util/regex';
 import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
 import { doctypeHTML } from '../util/constants';
-import { ConfigFile } from '../../types';
+import { ConfigFile, ServerRequest } from '../../types';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -243,7 +243,7 @@ export async function buildFilesWithConfigs(componentData: any[]) {
   }
 }
 
-export async function buildStaticFiles(config: { [key: string]: any }, component) {
+export async function buildStaticFiles(config: ConfigFile, component) {
   let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
   const isDynamicRoute = component.path.match(regex.isDynamicRoute);
   // Handle dynamic routing
@@ -271,7 +271,7 @@ export async function buildStaticFiles(config: { [key: string]: any }, component
       // Write file
       fs.writeFileSync(
         path.join(outputPath, `./index.html`), 
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ params: {} }, staticComponentOutput) : staticComponentOutput)
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ params: {} } as ServerRequest, staticComponentOutput, config) : staticComponentOutput)
       );
     } catch (err) {
       console.error(err);
@@ -285,14 +285,14 @@ export async function buildStaticFiles(config: { [key: string]: any }, component
           params: {
             ...(componentDynamicPaths?.length ? dynamicPath : {})
           }
-        };
+        } as ServerRequest;
         const staticComponentOutput = await componentFn(req);
         // Write file
         const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
           path.join(updatedOutDir, `./index.html`), 
-          doctypeHTML + (config?.wrapper ? await config.wrapper(req, staticComponentOutput) : staticComponentOutput)
+          doctypeHTML + (config?.wrapper ? await config.wrapper(req, staticComponentOutput, config) : staticComponentOutput)
         );
       } catch (err) {
         console.log('Could not build static component', component.path);

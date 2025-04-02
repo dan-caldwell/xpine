@@ -14,6 +14,6 @@ export type ServerRequest = Request & {
 }
 
 export type ConfigFile = {
-  staticPaths?: boolean | (() => Promise<string[]>);
-  wrapper?: (req: ServerRequest, children: any) => Promise<any>;
+  staticPaths?: boolean | (() => Promise<{ [key: string]: string}[]>);
+  wrapper?: (req: ServerRequest, children: any, config?: ConfigFile) => Promise<any>;
 }

@@ -1,3 +1,4 @@
 - tests
 - dev server crashes if too many files are changed at the same time
 - fix flash of unstyled content
+- config file wrapper override the props (e.g. the title)

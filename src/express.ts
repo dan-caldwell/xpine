@@ -67,7 +67,7 @@ export async function createRouter() {
         if (routeItem && !isDev) {
           if (isJSX) {
             const originalResult = await routeItem(req, res);
-            const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
+            const output = config?.wrapper ? await config.wrapper(req, originalResult, config) : originalResult;
             res.send(doctypeHTML + output);
           } else {
             await routeItem(req, res);
@@ -80,7 +80,7 @@ export async function createRouter() {
         if (isJSX) {
           const config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
           const originalResult = await defaultRouteImport(req, res);
-          const output = config?.wrapper ? await config.wrapper(req, originalResult) : originalResult;
+          const output = config?.wrapper ? await config.wrapper(req, originalResult, config) : originalResult;
           res.send(doctypeHTML + output);
         } else {
           await defaultRouteImport(req, res);
