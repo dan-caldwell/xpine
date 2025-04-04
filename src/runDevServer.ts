@@ -13,6 +13,8 @@ await setupEnv();
 export async function runDevServer() {
   process.env.NODE_ENV = 'development';
 
+  const rebuildEmitter = createRebuildEmitter();
+
   // Initial server set up
   await buildApp(true);
 
@@ -32,14 +34,22 @@ export async function runDevServer() {
     if (shouldReloadServer) {
       // We modified files in the server, restart the server
       await asyncServerClose(appServer.server);
-      await buildApp(true);
-      const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
-      appServer = await startServer();
+      rebuildEmitter.emit('rebuild-server');
       return;
     }
     await buildApp(true);
     refreshEmitter.emit('refresh');
   });
+
+  rebuildEmitter.on('done', async () => {
+    await rebuildServer();
+  })
+
+  async function rebuildServer() {
+    await buildApp(true);
+    const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
+    appServer = await startServer();
+  }
 
   // Create web socket sever
   const wsApp = express();
@@ -68,4 +78,28 @@ function asyncServerClose(server) {
     server.close();
     resolve(true);
   })
+}
+
+function createRebuildEmitter(delay = 500) {
+  class RebuildEmitter extends EventEmitter { };
+  const rebuildEmitter = new RebuildEmitter();
+  let start = 0;
+  let hasEmitted = false;
+  rebuildEmitter.on('rebuild-server', () => {
+    hasEmitted = false;
+    trigger();
+  });
+  function trigger() {
+    start = Date.now();
+    const interval = setInterval(() => {
+      if (hasEmitted) return;
+      const now = Date.now();
+      if (now - start >= delay) {
+        rebuildEmitter.emit('done');
+        clearInterval(interval);
+        hasEmitted = true;
+      }
+    }, 100);
+  }
+  return rebuildEmitter;
 }
