@@ -258,7 +258,14 @@ export async function buildStaticFiles(config: ConfigFile, component) {
 
   const builtComponentPath = sourcePathToDistPath(component.path);
   const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
-  const componentFn = (await import(builtComponentPath + `?cache=${Date.now()}`)).default;
+  const componentImport = await import(builtComponentPath + `?cache=${Date.now()}`);
+  const componentFn = componentImport.default;
+  if (componentImport?.config) {
+    config = {
+      ...config,
+      ...componentImport.config,
+    }
+  }
   const outputPath = componentDynamicPaths?.length ?
     componentDynamicPaths.reduce((total, current) => {
       return total.replace(`/[${current}]`, '')

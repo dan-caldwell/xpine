@@ -44,11 +44,19 @@ export async function createRouter() {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }
     }
-    const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
-    const config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
 
     // Import route
-    const routeItem = isDev ? null : (await import(route.path)).default;
+    const componentImport = isDev ? null : await import(route.path);
+    const componentFn = componentImport?.default;
+
+    const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
+    let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+    if (componentImport?.config) {
+      config = {
+        ...config,
+        ...componentImport.config,
+      }
+    }
 
     // Push to the route results array
     routeResults.push({
@@ -63,29 +71,35 @@ export async function createRouter() {
           res.sendFile(staticPath);
           return;
         }
-        // Check if it's a string response from the routeItem or is a different response
-        if (routeItem && !isDev) {
+        // Check if it's a string response from the componentFn or is a different response
+        if (componentFn && !isDev) {
           if (isJSX) {
             const data = config?.data ? await config.data(req) : null;
-            const originalResult = await routeItem({ req, res, data });
+            const originalResult = await componentFn({ req, res, data });
             const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data }) : originalResult;
             res.send(doctypeHTML + output);
           } else {
-            await routeItem(req, res);
+            await componentFn(req, res);
           }
           return;
         }
-
-        const defaultRouteImport = (await import(route.path + `?cache=${Date.now()}`)).default;
+        const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
+        const componentFnDev = componentImportDev.default;
         // Require every time only if in development mode
         if (isJSX) {
-          const config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+          let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+          if (componentImportDev?.config) {
+            config = {
+              ...config,
+              ...componentImportDev.config,
+            }
+          }
           const data = config?.data ? await config.data(req) : null;
-          const originalResult = await defaultRouteImport({ req, res, data });
+          const originalResult = await componentFnDev({ req, res, data });
           const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data }) : originalResult;
           res.send(doctypeHTML + output);
         } else {
-          await defaultRouteImport(req, res);
+          await componentFnDev(req, res);
         }
       } catch (err) {
         console.error(err);
