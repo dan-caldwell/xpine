@@ -66,8 +66,9 @@ export async function createRouter() {
         // Check if it's a string response from the routeItem or is a different response
         if (routeItem && !isDev) {
           if (isJSX) {
-            const originalResult = await routeItem(req, res);
-            const output = config?.wrapper ? await config.wrapper(req, originalResult, config) : originalResult;
+            const data = config?.data ? await config.data(req) : null;
+            const originalResult = await routeItem({ req, res, data });
+            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data }) : originalResult;
             res.send(doctypeHTML + output);
           } else {
             await routeItem(req, res);
@@ -79,8 +80,9 @@ export async function createRouter() {
         // Require every time only if in development mode
         if (isJSX) {
           const config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
-          const originalResult = await defaultRouteImport(req, res);
-          const output = config?.wrapper ? await config.wrapper(req, originalResult, config) : originalResult;
+          const data = config?.data ? await config.data(req) : null;
+          const originalResult = await defaultRouteImport({ req, res, data });
+          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data }) : originalResult;
           res.send(doctypeHTML + output);
         } else {
           await defaultRouteImport(req, res);

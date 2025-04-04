@@ -267,11 +267,13 @@ export async function buildStaticFiles(config: ConfigFile, component) {
   if (typeof config?.staticPaths === 'boolean') {
     // Build as-is
     try {
-      const staticComponentOutput = await componentFn();
+      const req = { params: {} } as ServerRequest;
+      const data = config?.data ? await config.data(req) : null;
+      const staticComponentOutput = await componentFn({ data });
       // Write file
       fs.writeFileSync(
-        path.join(outputPath, `./index.html`), 
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ params: {} } as ServerRequest, staticComponentOutput, config) : staticComponentOutput)
+        path.join(outputPath, `./index.html`),
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data }) : staticComponentOutput)
       );
     } catch (err) {
       console.error(err);
@@ -286,13 +288,14 @@ export async function buildStaticFiles(config: ConfigFile, component) {
             ...(componentDynamicPaths?.length ? dynamicPath : {})
           }
         } as ServerRequest;
-        const staticComponentOutput = await componentFn(req);
+        const data = config?.data ? await config.data(req) : null;
+        const staticComponentOutput = await componentFn({ req, data });
         // Write file
         const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
-          path.join(updatedOutDir, `./index.html`), 
-          doctypeHTML + (config?.wrapper ? await config.wrapper(req, staticComponentOutput, config) : staticComponentOutput)
+          path.join(updatedOutDir, `./index.html`),
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data }) : staticComponentOutput)
         );
       } catch (err) {
         console.log('Could not build static component', component.path);

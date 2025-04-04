@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 export type XPineConfig = {
   [key: string]: any;
@@ -11,9 +11,24 @@ export type TokenUser = {
 
 export type ServerRequest = Request & {
   user?: TokenUser;
+  clientIp?: string;
+}
+
+export type WrapperProps = {
+  req: ServerRequest;
+  children: any;
+  config: ConfigFile;
+  data?: any;
 }
 
 export type ConfigFile = {
   staticPaths?: boolean | (() => Promise<{ [key: string]: string}[]>);
-  wrapper?: (req: ServerRequest, children: any, config?: ConfigFile) => Promise<any>;
+  wrapper?: (props: WrapperProps) => Promise<any>;
+  data?: (req: ServerRequest) => Promise<any>;
+}
+
+export type PageProps = {
+  req: ServerRequest;
+  res: Response;
+  data: any;
 }
