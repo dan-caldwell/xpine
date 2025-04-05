@@ -9,7 +9,8 @@ async function replaceDocumentContentsWithLinkResponse() {
 }
 
 async function updatePageOnLinkClick(e) {
-  const targetHref = e?.target?.getAttribute('href');
+  e.preventDefault();
+  const targetHref = e?.target?.closest('a')?.getAttribute('href');
   if (!targetHref) return;
   if (isExternalURL(targetHref) && !e?.target?.getAttribute('data-spa-crossorigin')) return;
   e.preventDefault();

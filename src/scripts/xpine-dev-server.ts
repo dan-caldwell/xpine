@@ -1,17 +1,17 @@
 import chokidar from 'chokidar';
 import path from 'path';
-import { buildXPine } from './build-module';
+import shell from 'shelljs';
 
 export async function runXPineDevServer() {
 
-  await buildXPine();
+  shell.exec('npm run build');
 
   // Watch files
   const watcher = chokidar.watch(path.join(import.meta.dirname, '../'), {
     ignoreInitial: true,
   });
   watcher.on('all', async (event) => {
-    await buildXPine();
+    shell.exec('npm run build');
   });
 }
 

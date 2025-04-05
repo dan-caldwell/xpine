@@ -3,14 +3,15 @@ import { globSync } from 'glob';
 import { config } from './util/get-config';
 import { verifyUser } from './auth';
 import requestIP from 'request-ip';
-import { ServerRequest } from '../types';
+import { ConfigFile, ServerRequest } from '../types';
 import fs from 'fs-extra';
 import path from 'path';
 import regex from './util/regex';
-
-const doctypeHTML = '<!DOCTYPE html>';
+import { getCompleteConfig, getConfigFiles } from './util/config-file';
+import { doctypeHTML } from './util/constants';
 
 export async function createRouter() {
+  const isDev = process.env.NODE_ENV === 'development';
   const methods = ['get', 'post', 'put', 'patch', 'delete'];
   const router = express.Router();
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
@@ -18,7 +19,7 @@ export async function createRouter() {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
     // Replace index
-    const routeFormattedWithIndex = routeFormatted.replace(/\/index$/g, '')
+    const routeFormattedWithIndex = routeFormatted.replace(/\/index$/g, '');
     return {
       route: routeFormattedWithIndex,
       path: route.replace(config.srcDir, config.distDir).replace('.tsx', '.js').replace('.ts', '.js'),
@@ -26,13 +27,12 @@ export async function createRouter() {
     };
   }).filter(Boolean);
   const routeResults = [];
+  const configFiles = globSync(config.pagesDir + '/**/+config.{tsx,ts}');
 
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
-    // Import route
-    const routeItem = process.env.NODE_ENV === 'development' ? null : (await import(route.path)).default;
     // Configure result,methods for the route
-    const slugRoute = route.route.toLowerCase().replace(/[ ]/g, '');
+    const slugRoute = route.route.replace(/[ ]/g, '');
     const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
     const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
     let formattedRouteItem = slugRoute;
@@ -44,6 +44,20 @@ export async function createRouter() {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }
     }
+
+    // Import route
+    const componentImport = isDev ? null : await import(route.path);
+    const componentFn = componentImport?.default;
+
+    const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
+    let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+    if (componentImport?.config) {
+      config = {
+        ...config,
+        ...componentImport.config,
+      };
+    }
+
     // Push to the route results array
     routeResults.push({
       formattedRouteItem,
@@ -53,25 +67,39 @@ export async function createRouter() {
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       try {
         const staticPath = routeHasStaticPath(formattedRouteItem, req.params);
-        if (staticPath && process.env.NODE_ENV !== 'development') {
+        if (staticPath && !isDev) {
           res.sendFile(staticPath);
           return;
         }
-        // Check if it's a string response from the routeItem or is a different response
-        if (routeItem) {
+        // Check if it's a string response from the componentFn or is a different response
+        if (componentFn && !isDev) {
           if (isJSX) {
-            res.send(doctypeHTML + (await routeItem(req, res)));
+            const data = config?.data ? await config.data(req) : null;
+            const originalResult = await componentFn({ req, res, data, });
+            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
+            res.send(doctypeHTML + output);
           } else {
-            await routeItem(req, res);
+            await componentFn(req, res);
           }
           return;
         }
-        const defaultRouteImport = (await import(route.path + `?cache=${Date.now()}`)).default;
+        const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
+        const componentFnDev = componentImportDev.default;
         // Require every time only if in development mode
         if (isJSX) {
-          res.send(doctypeHTML + (await defaultRouteImport(req, res)));
+          let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+          if (componentImportDev?.config) {
+            config = {
+              ...config,
+              ...componentImportDev.config,
+            };
+          }
+          const data = config?.data ? await config.data(req) : null;
+          const originalResult = await componentFnDev({ req, res, data, });
+          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
+          res.send(doctypeHTML + output);
         } else {
-          await defaultRouteImport(req, res);
+          await componentFnDev(req, res);
         }
       } catch (err) {
         console.error(err);
@@ -111,7 +139,7 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
   });
 
   const found404 = routeResults?.find(item => item?.formattedRouteItem === '/404');
-  const import404 = process.env.NODE_ENV === 'development' ? null : (await import(found404.route.path)).default;
+  const import404 = process.env.NODE_ENV === 'development' || !found404 ? null : (await import(found404.route.path)).default;
 
   if (beforeErrorRoute) beforeErrorRoute(app);
 
@@ -123,7 +151,7 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
     if (import404) {
       res.send(doctypeHTML + (await import404(req, res)));
     } else if (found404 && process.env.NODE_ENV === 'development') {
-      const import404Item = (await import(found404.route.path + `?cache=${Date.now()}`)).default
+      const import404Item = (await import(found404.route.path + `?cache=${Date.now()}`)).default;
       res.send(doctypeHTML + (await import404Item(req, res)));
     } else {
       res.send('Error');

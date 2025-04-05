@@ -170,7 +170,7 @@ export function createStaticFile(pathName: string, source: ts.SourceFile) {
         console.log('make this file static', pathName);
       }
     }
-  })
+  });
 }
 
 export function printRecursiveFrom(

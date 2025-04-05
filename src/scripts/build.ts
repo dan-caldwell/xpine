@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import ts from 'typescript';
 import {
   convertEntryPointsToSingleFile,
-  findDataAttributesAndFunctions,
+  findDataAttributesAndFunctions
 } from '../build/typescript-builder';
 import { globSync } from 'glob';
 import postcss from 'postcss';
@@ -17,6 +17,9 @@ import transformTSXFiles from '../build/esbuild/transformTSXFiles';
 import addDotJS from '../build/esbuild/addDotJS';
 import getDataFiles from '../build/esbuild/getDataFiles';
 import regex from '../util/regex';
+import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
+import { doctypeHTML, staticComment } from '../util/constants';
+import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -25,8 +28,9 @@ const allPackages = Object.keys(packageJson.devDependencies).concat(Object.keys(
 
 const xpineDistDir = getXPineDistDir();
 
-export async function buildApp(isDev = false) {
+export async function buildApp(isDev = false, removePreviousBuild = false) {
   try {
+    if (removePreviousBuild) fs.removeSync(config.distDir);
     const srcDirFiles = globSync(config.srcDir + '/**/*.{js,ts,tsx,jsx}');
     const { componentData, dataFiles, } = await buildAppFiles(srcDirFiles, isDev);
     const alpineDataFile = await buildAlpineDataFile(componentData, dataFiles);
@@ -34,8 +38,8 @@ export async function buildApp(isDev = false) {
     fs.removeSync(config.distTempFolder);
     await buildCSS();
     await buildPublicFolderSymlinks();
-    // Build static files if there are any
-    if (!isDev) await buildStaticFiles(componentData);
+    // Build files with configs if there are any
+    if (!isDev) await buildFilesWithConfigs(componentData);
   } catch (err) {
     console.error('Build failed');
     console.error(err);
@@ -43,7 +47,7 @@ export async function buildApp(isDev = false) {
 }
 
 async function buildAppFiles(files: string[], isDev?: boolean) {
-  const componentData = [];
+  const componentData: ComponentData[] = [];
   const dataFiles = [];
 
   const pageConfigFiles = files.filter((file) => {
@@ -71,7 +75,7 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
     plugins: [
       addDotJS(allPackages, extensions, isDev),
       transformTSXFiles(componentData, pageConfigFiles),
-      getDataFiles(dataFiles),
+      getDataFiles(dataFiles)
     ],
   });
   await logSize(config.distDir, 'app');
@@ -122,16 +126,16 @@ async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: bool
 function writeDevServerClientSideCode(tempFilePath: string) {
   const devServerPath = path.join(xpineDistDir, './src/static/dev-server.js');
   const content = fs.readFileSync(devServerPath, 'utf-8');
-  fs.appendFileSync(tempFilePath, `\n` + content);
+  fs.appendFileSync(tempFilePath, '\n' + content);
 }
 
 function writeSpaClientSideCode(tempFilePath: string) {
   const spaPath = path.join(xpineDistDir, './src/static/spa.js');
   const content = fs.readFileSync(spaPath, 'utf-8');
-  fs.appendFileSync(tempFilePath, `\n` + content);
+  fs.appendFileSync(tempFilePath, '\n' + content);
 }
 
-async function buildAlpineDataFile(componentData: any[], dataFiles: any[]) {
+async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: any[]) {
   const output = {
     imports: [
       'import Alpine from \'alpinejs\';'
@@ -211,11 +215,6 @@ export async function buildPublicFolderSymlinks() {
   }
 }
 
-type FileItem = {
-  file: string;
-  size: number;
-}
-
 export async function logSize(pathName: string, type: 'app' | 'client' | 'css', validExtensions = ['.js', '.css']) {
   const files = globSync(pathName + '/**/*' + (type === 'css' ? '.css' : ''));
   const fileSizes = files.map((file) => {
@@ -231,68 +230,83 @@ export async function logSize(pathName: string, type: 'app' | 'client' | 'css', 
   console.info(`[${totalSize.toFixed(3)} MB] Built ${type}`);
 }
 
-export async function buildStaticFiles(componentData: any[]) {
-  const componentsWithConfigs = componentData.filter(item => item.configFile);
+export async function buildFilesWithConfigs(componentData: ComponentData[]) {
+  const now = Date.now();
+  const componentsWithConfigs = componentData.filter(item => item.configFiles);
   for (const component of componentsWithConfigs) {
-    const config = (await import(sourcePathToDistPath(component.configFile) + `?cache=${Date.now()}`)).default;
-    const shouldBeStatic = config?.staticPaths;
-    if (shouldBeStatic) {
-      let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
-      const isDynamicRoute = component.path.match(regex.isDynamicRoute);
-      // Handle dynamic routing
-      if (isDynamicRoute) {
-        componentFileName = component.path
-          .split('/')
-          .filter((dir: string) => dir.match(regex.isDynamicRoute))
-          .join('/')
-          .replace(regex.endsWithJSX, '')
-          .replace(regex.endsWithTSX, '');
-      }
-
-      const builtComponentPath = sourcePathToDistPath(component.path);
-      const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
-      const componentFn = (await import(builtComponentPath + `?cache=${Date.now()}`)).default;
-      const outputPath = componentDynamicPaths?.length ?
-        componentDynamicPaths.reduce((total, current) => {
-          return total.replace(`/[${current}]`, '')
-        }, path.dirname(builtComponentPath)) :
-        path.dirname(builtComponentPath);
-      if (typeof shouldBeStatic === 'boolean') {
-        // Build as-is
-        try {
-          const staticComponentOutput = await componentFn();
-          // Write file
-          fs.writeFileSync(path.join(outputPath, './index.html'), staticComponentOutput);
-        } catch (err) {
-          console.error(err);
-          console.log('Could not build static component', component.path);
-        }
-      } else if (typeof shouldBeStatic === 'function') {
-        const dynamicPaths = await shouldBeStatic();
-        for (const dynamicPath of dynamicPaths) {
-          try {
-            const staticComponentOutput = await componentFn({
-              params: {
-                ...(componentDynamicPaths?.length ? dynamicPath : {})
-              }
-            });
-            // Write file
-            const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
-            fs.ensureDirSync(updatedOutDir);
-            fs.writeFileSync(path.join(updatedOutDir, `./index.html`), staticComponentOutput);
-          } catch (err) {
-            console.log('Could not build static component', component.path);
-            console.error(err);
-          }
-        }
-        // Get the paths from the shouldBeStatic function and then build each path
-      }
+    let config: ConfigFile = await getCompleteConfig(component.configFiles, now);
+    const builtComponentPath = sourcePathToDistPath(component.path);
+    const componentImport = await import(builtComponentPath + `?cache=${Date.now()}`);
+    if (componentImport?.config) {
+      config = {
+        ...config,
+        ...componentImport.config,
+      };
     }
+    if (config?.staticPaths) buildStaticFiles(config, component, componentImport, builtComponentPath);
   }
 }
 
-export function sourcePathToDistPath(sourcePath: string) {
-  return sourcePath.replace(config.srcDir, config.distDir).replace(/\.ts$/, '.js').replace(/\.tsx$/, '.js');
+export async function buildStaticFiles(config: ConfigFile, component: ComponentData, componentImport: any, builtComponentPath: string) {
+  if (!config?.staticPaths) return;
+  let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
+  const isDynamicRoute = component.path.match(regex.isDynamicRoute);
+  // Handle dynamic routing
+  if (isDynamicRoute) {
+    componentFileName = component.path
+      .split('/')
+      .filter((dir: string) => dir.match(regex.isDynamicRoute))
+      .join('/')
+      .replace(regex.endsWithJSX, '')
+      .replace(regex.endsWithTSX, '');
+  }
+
+  const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
+  const componentFn = componentImport.default;
+  const outputPath = componentDynamicPaths?.length ?
+    componentDynamicPaths.reduce((total, current) => {
+      return total.replace(`/[${current}]`, '');
+    }, path.dirname(builtComponentPath)) :
+    path.dirname(builtComponentPath);
+  if (typeof config?.staticPaths === 'boolean') {
+    // Build as-is
+    try {
+      const req = { params: {}, } as ServerRequest;
+      const data = config?.data ? await config.data(req) : null;
+      const staticComponentOutput = await componentFn({ data, });
+      // Write file
+      fs.writeFileSync(
+        path.join(outputPath, './index.html'),
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput) + staticComment
+      );
+    } catch (err) {
+      console.error(err);
+      console.log('Could not build static component', component.path);
+    }
+  } else if (typeof config?.staticPaths === 'function') {
+    const dynamicPaths = await config.staticPaths();
+    for (const dynamicPath of dynamicPaths) {
+      try {
+        const req = {
+          params: {
+            ...(componentDynamicPaths?.length ? dynamicPath : {}),
+          },
+        } as ServerRequest;
+        const data = config?.data ? await config.data(req) : null;
+        const staticComponentOutput = await componentFn({ req, data, });
+        // Write file
+        const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
+        fs.ensureDirSync(updatedOutDir);
+        fs.writeFileSync(
+          path.join(updatedOutDir, './index.html'),
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput) + staticComment
+        );
+      } catch (err) {
+        console.log('Could not build static component', component.path);
+        console.error(err);
+      }
+    }
+  }
 }
 
 export function getComponentDynamicPaths(componentPath: string): string[] {

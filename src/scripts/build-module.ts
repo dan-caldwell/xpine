@@ -19,7 +19,7 @@ export async function buildXPine() {
       path.join(dirname, './xpine-dev.ts'),
       // Static files
       path.join(dirname, '../static/dev-server.mjs'),
-      path.join(dirname, '../static/spa.mjs'),
+      path.join(dirname, '../static/spa.mjs')
     ],
     format: 'esm',
     platform: 'node',

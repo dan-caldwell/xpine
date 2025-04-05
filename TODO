@@ -1,2 +1,0 @@
-- static files from a +config.ts file in a folder (similar to vike)
-  - with a method of getting a list of file paths to feed into dynamic slugs, e.g. post/[id] slugs

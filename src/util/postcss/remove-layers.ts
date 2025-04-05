@@ -1,4 +1,4 @@
-import { PluginCreator } from "postcss";
+import { PluginCreator } from 'postcss';
 
 namespace plugin {
   export interface Options {}
@@ -12,9 +12,9 @@ const plugin: PluginCreator<plugin.Options> = (opts = {}) => {
     AtRule: {
       layer: atRule => {
         atRule.replaceWith(atRule.nodes);
-      }
-    }
-  }
+      },
+    },
+  };
  };
 plugin.postcss = true;
 
