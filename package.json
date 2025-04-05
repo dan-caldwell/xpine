@@ -34,7 +34,8 @@
     "test:start": "cd ./tests && npm run build && npm start",
     "test:build": "cd ./tests && npm run build",
     "lint": "npx eslint",
-    "fix": "npx eslint --fix"
+    "fix": "npx eslint --fix",
+    "publish": "npm run build && npm version patch && npm publish"
   },
   "bin": {
     "xpine-build": "dist/src/scripts/xpine-build.js",
