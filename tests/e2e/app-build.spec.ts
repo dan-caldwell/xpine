@@ -48,7 +48,7 @@ test('boolean static path', async () => {
 
 test('inner static path override', async ({ page }) => {
   expect(fs.existsSync(path.join(config.distDir, './pages/base-static-path/index.html'))).toEqual(true);
-  expect(fs.existsSync(path.join(config.distDir, './pages/base-static-path/non-static-path/index'))).toEqual(false);
+  expect(fs.existsSync(path.join(config.distDir, './pages/base-static-path/non-static-path/index.html'))).toEqual(false);
 
   await page.goto(url + '/base-static-path');
   await expect(page.getByTestId('base-static-path')).toHaveText('My title');

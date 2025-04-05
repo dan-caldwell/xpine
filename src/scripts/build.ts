@@ -239,12 +239,21 @@ export async function buildFilesWithConfigs(componentData: any[]) {
   const now = Date.now();
   const componentsWithConfigs = componentData.filter(item => item.configFiles);
   for (const component of componentsWithConfigs) {
-    const config: ConfigFile = await getCompleteConfig(component.configFiles, now);
-    if (config?.staticPaths) buildStaticFiles(config, component);
+    let config: ConfigFile = await getCompleteConfig(component.configFiles, now);
+    const builtComponentPath = sourcePathToDistPath(component.path);
+    const componentImport = await import(builtComponentPath + `?cache=${Date.now()}`);
+    if (componentImport?.config) {
+      config = {
+        ...config,
+        ...componentImport.config,
+      };
+    }
+    if (config?.staticPaths) buildStaticFiles(config, component, componentImport, builtComponentPath);
   }
 }
 
-export async function buildStaticFiles(config: ConfigFile, component) {
+export async function buildStaticFiles(config: ConfigFile, component, componentImport: any, builtComponentPath: string) {
+  if (!config?.staticPaths) return;
   let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
   const isDynamicRoute = component.path.match(regex.isDynamicRoute);
   // Handle dynamic routing
@@ -257,16 +266,8 @@ export async function buildStaticFiles(config: ConfigFile, component) {
       .replace(regex.endsWithTSX, '');
   }
 
-  const builtComponentPath = sourcePathToDistPath(component.path);
   const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
-  const componentImport = await import(builtComponentPath + `?cache=${Date.now()}`);
   const componentFn = componentImport.default;
-  if (componentImport?.config) {
-    config = {
-      ...config,
-      ...componentImport.config,
-    };
-  }
   const outputPath = componentDynamicPaths?.length ?
     componentDynamicPaths.reduce((total, current) => {
       return total.replace(`/[${current}]`, '');
