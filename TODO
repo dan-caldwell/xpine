@@ -1,7 +1,4 @@
 - tests
   - alpine functionality test
   - boolean static path test
-
-BUG:
-  static files are being generated in the base dir (then getting overwritten)
-    - add support for uppercase letters in paths
+    - not working currently

@@ -38,6 +38,21 @@ test('dynamic inner paths with config in the component', async ({ page}) => {
   await expect(page.getByTestId('base-config')).toBeAttached();
 });
 
-test('static paths exist for dynamic page', async ({ page }) => {
+test('static paths exist for dynamic page', async () => {
   expect(fs.existsSync(path.join(config.distDir, './pages/my-path-a2/my-path-b2/my-path-c2/2/index.html'))).toEqual(true);
+});
+
+test('boolean static path', async () => {
+  expect(fs.existsSync(path.join(config.distDir, './pages/boolean-static-path/index.html'))).toEqual(true);
+});
+
+test('inner static path override', async ({ page }) => {
+  expect(fs.existsSync(path.join(config.distDir, './pages/base-static-path/index.html'))).toEqual(true);
+  expect(fs.existsSync(path.join(config.distDir, './pages/base-static-path/non-static-path/index'))).toEqual(false);
+
+  await page.goto(url + '/base-static-path');
+  await expect(page.getByTestId('base-static-path')).toHaveText('My title');
+
+  await page.goto(url + '/base-static-path/non-static-path');
+  await expect(page.getByTestId('non-static-path')).toHaveText('My title');
 });
