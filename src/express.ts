@@ -32,7 +32,7 @@ export async function createRouter() {
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
     // Configure result,methods for the route
-    const slugRoute = route.route.toLowerCase().replace(/[ ]/g, '');
+    const slugRoute = route.route.replace(/[ ]/g, '');
     const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
     const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
     let formattedRouteItem = slugRoute;

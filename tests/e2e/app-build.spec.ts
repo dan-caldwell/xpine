@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { config } from 'xpine';
+import fs from 'fs-extra';
+import path from 'path';
 
 const url = `http://127.0.0.1:${process.env.PORT}`;
 
@@ -16,21 +19,25 @@ test('home page uses same file wrapper', async ({ page }) => {
 test('same dir +config uses config', async ({ page }) => {
   await page.goto(url + '/with-same-dir-wrapper');
   await expect(page.getByTestId('base-config')).toBeAttached();
-})
+});
 
-// test('has title', async ({ page }) => {
-//   await page.goto('https://playwright.dev/');
+test('dynamic paths with data in +config', async ({ page }) => {
+  await page.goto(url + '/my-path-a/my-path-b/1');
+  await expect(page.getByTestId('path-c-data')).toHaveText('sunt aut facere repellat provident occaecati excepturi optio reprehenderit');
+  await expect(page.getByTestId('path-c-patha')).toHaveText('my-path-a');
+  await expect(page.getByTestId('path-c-pathb')).toHaveText('my-path-b');
+  await expect(page.getByTestId('base-config')).toBeAttached();
+});
 
-//   // Expect a title "to contain" a substring.
-//   await expect(page).toHaveTitle(/Playwright/);
-// });
+test('dynamic inner paths with config in the component', async ({ page}) => {
+  await page.goto(url + '/my-path-a2/my-path-b2/my-path-c2/2');
+  await expect(page.getByTestId('path-d-data')).toHaveText('qui est esse');
+  await expect(page.getByTestId('path-d-patha')).toHaveText('my-path-a2');
+  await expect(page.getByTestId('path-d-pathb')).toHaveText('my-path-b2');
+  await expect(page.getByTestId('path-d-pathc')).toHaveText('my-path-c2');
+  await expect(page.getByTestId('base-config')).toBeAttached();
+});
 
-// test('get started link', async ({ page }) => {
-//   await page.goto('https://playwright.dev/');
-
-//   // Click the get started link.
-//   await page.getByRole('link', { name: 'Get started' }).click();
-
-//   // Expects page to have a heading with the name of Installation.
-//   await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
-// });
+test('static paths exist for dynamic page', async ({ page }) => {
+  expect(fs.existsSync(path.join(config.distDir, './pages/my-path-a2/my-path-b2/my-path-c2/2/index.html'))).toEqual(true);
+});

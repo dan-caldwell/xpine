@@ -30,6 +30,9 @@
     "build:types": "sh ./src/scripts/build-types.sh",
     "xpine-dev-server": "tsx ./src/scripts/xpine-dev-server.ts",
     "test": "cd ./tests && npm run test",
+    "test:dev": "cd ./tests && npm run dev",
+    "test:start": "cd ./tests && npm run build && npm start",
+    "test:build": "cd ./tests && npm run build",
     "lint": "npx eslint",
     "fix": "npx eslint --fix"
   },
@@ -46,6 +49,7 @@
     "@types/request-ip": "^0.0.41",
     "@types/shelljs": "^0.8.15",
     "@types/yargs": "^17.0.33",
+    "axios": "^1.8.4",
     "typescript-eslint": "^8.29.0"
   }
 }
