@@ -18,8 +18,8 @@ import addDotJS from '../build/esbuild/addDotJS';
 import getDataFiles from '../build/esbuild/getDataFiles';
 import regex from '../util/regex';
 import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
-import { doctypeHTML } from '../util/constants';
-import { ConfigFile, ServerRequest } from '../../types';
+import { doctypeHTML, staticComment } from '../util/constants';
+import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -47,7 +47,7 @@ export async function buildApp(isDev = false, removePreviousBuild = false) {
 }
 
 async function buildAppFiles(files: string[], isDev?: boolean) {
-  const componentData = [];
+  const componentData: ComponentData[] = [];
   const dataFiles = [];
 
   const pageConfigFiles = files.filter((file) => {
@@ -135,7 +135,7 @@ function writeSpaClientSideCode(tempFilePath: string) {
   fs.appendFileSync(tempFilePath, '\n' + content);
 }
 
-async function buildAlpineDataFile(componentData: any[], dataFiles: any[]) {
+async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: any[]) {
   const output = {
     imports: [
       'import Alpine from \'alpinejs\';'
@@ -215,11 +215,6 @@ export async function buildPublicFolderSymlinks() {
   }
 }
 
-type FileItem = {
-  file: string;
-  size: number;
-}
-
 export async function logSize(pathName: string, type: 'app' | 'client' | 'css', validExtensions = ['.js', '.css']) {
   const files = globSync(pathName + '/**/*' + (type === 'css' ? '.css' : ''));
   const fileSizes = files.map((file) => {
@@ -235,7 +230,7 @@ export async function logSize(pathName: string, type: 'app' | 'client' | 'css', 
   console.info(`[${totalSize.toFixed(3)} MB] Built ${type}`);
 }
 
-export async function buildFilesWithConfigs(componentData: any[]) {
+export async function buildFilesWithConfigs(componentData: ComponentData[]) {
   const now = Date.now();
   const componentsWithConfigs = componentData.filter(item => item.configFiles);
   for (const component of componentsWithConfigs) {
@@ -252,7 +247,7 @@ export async function buildFilesWithConfigs(componentData: any[]) {
   }
 }
 
-export async function buildStaticFiles(config: ConfigFile, component, componentImport: any, builtComponentPath: string) {
+export async function buildStaticFiles(config: ConfigFile, component: ComponentData, componentImport: any, builtComponentPath: string) {
   if (!config?.staticPaths) return;
   let componentFileName: string = component.path.split('/').pop().replace(regex.endsWithJSX, '').replace(regex.endsWithTSX, '');
   const isDynamicRoute = component.path.match(regex.isDynamicRoute);
@@ -282,7 +277,7 @@ export async function buildStaticFiles(config: ConfigFile, component, componentI
       // Write file
       fs.writeFileSync(
         path.join(outputPath, './index.html'),
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput)
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput) + staticComment
       );
     } catch (err) {
       console.error(err);
@@ -304,7 +299,7 @@ export async function buildStaticFiles(config: ConfigFile, component, componentI
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
           path.join(updatedOutDir, './index.html'),
-          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput)
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput) + staticComment
         );
       } catch (err) {
         console.log('Could not build static component', component.path);

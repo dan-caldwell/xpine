@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-const url = `http://127.0.0.1:${process.env.PORT}`;
-
+import { url } from '../playwright.config';
 
 test('pathD button changes color on button click', async ({ page }) => {
   await page.goto(url + '/my-path-a2/my-path-b2/my-path-c2/2');

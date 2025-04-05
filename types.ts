@@ -32,3 +32,15 @@ export type PageProps = {
   res: Response;
   data: any;
 }
+
+export type FileItem = {
+  file: string;
+  size: number;
+}
+
+export type ComponentData = {
+  path: string;
+  contents: string;
+  clientContent: string;
+  configFiles: string[];
+}

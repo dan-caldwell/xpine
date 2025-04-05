@@ -1,11 +1,11 @@
 import fs from 'fs-extra';
 import { removeClientScriptInTSXFile } from '../typescript-builder';
 import ts from 'typescript';
-import path from 'path';
 import regex from '../../util/regex';
 import { getConfigFiles, isAConfigFile } from '../../util/config-file';
+import { ComponentData } from '../../../types';
 
-export default function transformTSXFiles(componentData: any[], pageConfigFiles: string[]) {
+export default function transformTSXFiles(componentData: ComponentData[], pageConfigFiles: string[]) {
   return {
     name: 'transform-tsx-files',
     setup(build) {
