@@ -28,8 +28,9 @@ const allPackages = Object.keys(packageJson.devDependencies).concat(Object.keys(
 
 const xpineDistDir = getXPineDistDir();
 
-export async function buildApp(isDev = false) {
+export async function buildApp(isDev = false, removePreviousBuild = false) {
   try {
+    if (removePreviousBuild) fs.removeSync(config.distDir);
     const srcDirFiles = globSync(config.srcDir + '/**/*.{js,ts,tsx,jsx}');
     const { componentData, dataFiles, } = await buildAppFiles(srcDirFiles, isDev);
     const alpineDataFile = await buildAlpineDataFile(componentData, dataFiles);

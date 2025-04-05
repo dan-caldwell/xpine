@@ -139,7 +139,7 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
   });
 
   const found404 = routeResults?.find(item => item?.formattedRouteItem === '/404');
-  const import404 = process.env.NODE_ENV === 'development' ? null : (await import(found404.route.path)).default;
+  const import404 = process.env.NODE_ENV === 'development' || !found404 ? null : (await import(found404.route.path)).default;
 
   if (beforeErrorRoute) beforeErrorRoute(app);
 
