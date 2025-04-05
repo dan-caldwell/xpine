@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import ts from 'typescript';
 import {
   convertEntryPointsToSingleFile,
-  findDataAttributesAndFunctions,
+  findDataAttributesAndFunctions
 } from '../build/typescript-builder';
 import { globSync } from 'glob';
 import postcss from 'postcss';
@@ -75,7 +75,7 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
     plugins: [
       addDotJS(allPackages, extensions, isDev),
       transformTSXFiles(componentData, pageConfigFiles),
-      getDataFiles(dataFiles),
+      getDataFiles(dataFiles)
     ],
   });
   await logSize(config.distDir, 'app');
@@ -126,13 +126,13 @@ async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: bool
 function writeDevServerClientSideCode(tempFilePath: string) {
   const devServerPath = path.join(xpineDistDir, './src/static/dev-server.js');
   const content = fs.readFileSync(devServerPath, 'utf-8');
-  fs.appendFileSync(tempFilePath, `\n` + content);
+  fs.appendFileSync(tempFilePath, '\n' + content);
 }
 
 function writeSpaClientSideCode(tempFilePath: string) {
   const spaPath = path.join(xpineDistDir, './src/static/spa.js');
   const content = fs.readFileSync(spaPath, 'utf-8');
-  fs.appendFileSync(tempFilePath, `\n` + content);
+  fs.appendFileSync(tempFilePath, '\n' + content);
 }
 
 async function buildAlpineDataFile(componentData: any[], dataFiles: any[]) {
@@ -265,23 +265,23 @@ export async function buildStaticFiles(config: ConfigFile, component) {
     config = {
       ...config,
       ...componentImport.config,
-    }
+    };
   }
   const outputPath = componentDynamicPaths?.length ?
     componentDynamicPaths.reduce((total, current) => {
-      return total.replace(`/[${current}]`, '')
+      return total.replace(`/[${current}]`, '');
     }, path.dirname(builtComponentPath)) :
     path.dirname(builtComponentPath);
   if (typeof config?.staticPaths === 'boolean') {
     // Build as-is
     try {
-      const req = { params: {} } as ServerRequest;
+      const req = { params: {}, } as ServerRequest;
       const data = config?.data ? await config.data(req) : null;
-      const staticComponentOutput = await componentFn({ data });
+      const staticComponentOutput = await componentFn({ data, });
       // Write file
       fs.writeFileSync(
-        path.join(outputPath, `./index.html`),
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data }) : staticComponentOutput)
+        path.join(outputPath, './index.html'),
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput)
       );
     } catch (err) {
       console.error(err);
@@ -293,17 +293,17 @@ export async function buildStaticFiles(config: ConfigFile, component) {
       try {
         const req = {
           params: {
-            ...(componentDynamicPaths?.length ? dynamicPath : {})
-          }
+            ...(componentDynamicPaths?.length ? dynamicPath : {}),
+          },
         } as ServerRequest;
         const data = config?.data ? await config.data(req) : null;
-        const staticComponentOutput = await componentFn({ req, data });
+        const staticComponentOutput = await componentFn({ req, data, });
         // Write file
         const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
-          path.join(updatedOutDir, `./index.html`),
-          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data }) : staticComponentOutput)
+          path.join(updatedOutDir, './index.html'),
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput)
         );
       } catch (err) {
         console.log('Could not build static component', component.path);

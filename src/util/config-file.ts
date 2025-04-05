@@ -1,7 +1,7 @@
-import { config } from "./get-config";
+import { config } from './get-config';
 import path from 'path';
-import regex from "./regex";
-import { ConfigFile } from "../../types";
+import regex from './regex';
+import { ConfigFile } from '../../types';
 
 export function sourcePathToDistPath(sourcePath: string) {
   return sourcePath?.replace(config.srcDir, config.distDir)?.replace(/\.ts$/, '.js')?.replace(/\.tsx$/, '.js');
@@ -27,7 +27,7 @@ export async function getCompleteConfig(configFiles: string[], cacheKey: string 
     config = {
       ...(await import(configFile + `?cache=${cacheKey}`)).default,
       ...config,
-    }
+    };
   }
   return config;
 }

@@ -9,8 +9,14 @@ test('app builds', async ({ page}) => {
 
 test('home page uses same file wrapper', async ({ page }) => {
   await page.goto(url);
-  await expect(page).toHaveTitle('My awesome website');
+  await expect(page.getByTestId('home-page-wrapper')).toBeAttached();
+  expect(await page.getByTestId('base-config').count()).toEqual(0);
 });
+
+test('same dir +config uses config', async ({ page }) => {
+  await page.goto(url + '/with-same-dir-wrapper');
+  await expect(page.getByTestId('base-config')).toBeAttached();
+})
 
 // test('has title', async ({ page }) => {
 //   await page.goto('https://playwright.dev/');

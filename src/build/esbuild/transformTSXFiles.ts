@@ -30,7 +30,7 @@ export default function transformTSXFiles(componentData: any[], pageConfigFiles:
           loader: 'tsx',
         };
       });
-    }
-  }
+    },
+  };
 }
 

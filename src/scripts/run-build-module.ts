@@ -1,3 +1,3 @@
-import { buildXPine } from "./build-module";
+import { buildXPine } from './build-module';
 
 buildXPine();

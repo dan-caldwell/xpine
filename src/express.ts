@@ -19,7 +19,7 @@ export async function createRouter() {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
     // Replace index
-    const routeFormattedWithIndex = routeFormatted.replace(/\/index$/g, '')
+    const routeFormattedWithIndex = routeFormatted.replace(/\/index$/g, '');
     return {
       route: routeFormattedWithIndex,
       path: route.replace(config.srcDir, config.distDir).replace('.tsx', '.js').replace('.ts', '.js'),
@@ -55,7 +55,7 @@ export async function createRouter() {
       config = {
         ...config,
         ...componentImport.config,
-      }
+      };
     }
 
     // Push to the route results array
@@ -75,8 +75,8 @@ export async function createRouter() {
         if (componentFn && !isDev) {
           if (isJSX) {
             const data = config?.data ? await config.data(req) : null;
-            const originalResult = await componentFn({ req, res, data });
-            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data }) : originalResult;
+            const originalResult = await componentFn({ req, res, data, });
+            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
             res.send(doctypeHTML + output);
           } else {
             await componentFn(req, res);
@@ -92,11 +92,11 @@ export async function createRouter() {
             config = {
               ...config,
               ...componentImportDev.config,
-            }
+            };
           }
           const data = config?.data ? await config.data(req) : null;
-          const originalResult = await componentFnDev({ req, res, data });
-          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data }) : originalResult;
+          const originalResult = await componentFnDev({ req, res, data, });
+          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
           res.send(doctypeHTML + output);
         } else {
           await componentFnDev(req, res);
@@ -151,7 +151,7 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
     if (import404) {
       res.send(doctypeHTML + (await import404(req, res)));
     } else if (found404 && process.env.NODE_ENV === 'development') {
-      const import404Item = (await import(found404.route.path + `?cache=${Date.now()}`)).default
+      const import404Item = (await import(found404.route.path + `?cache=${Date.now()}`)).default;
       res.send(doctypeHTML + (await import404Item(req, res)));
     } else {
       res.send('Error');

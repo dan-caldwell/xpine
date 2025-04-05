@@ -9,6 +9,7 @@ export const config = {
         description={data?.description}
         req={req}
       >
+        <div data-testid="home-page-wrapper"></div>
           {children}
       </Base>
     )

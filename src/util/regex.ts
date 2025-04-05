@@ -6,4 +6,4 @@ export default {
   isDynamicRoute: /\[(.*)\]/g,
   endsWithTSX: /\.tsx$/,
   endsWithJSX: /\.jsx$/,
-}
+};

@@ -43,7 +43,7 @@ export async function runDevServer() {
 
   rebuildEmitter.on('done', async () => {
     await rebuildServer();
-  })
+  });
 
   async function rebuildServer() {
     await buildApp(true);
@@ -77,7 +77,7 @@ function asyncServerClose(server) {
   return new Promise((resolve, reject) => {
     server.close();
     resolve(true);
-  })
+  });
 }
 
 function createRebuildEmitter(delay = 500) {
