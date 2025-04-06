@@ -1,7 +1,13 @@
-export default function Navbar() {
+import { getContext, createContext } from 'xpine';
+
+await createContext('navbar', []);
+
+export default async function Navbar() {
   const now = Date.now();
+  const context = await getContext('navbar');
   return (
     <div data-testid="navbar" data-persistent="navbar" style="display: flex; flex-direction: column;">
+      <pre>{JSON.stringify(context, null, 2)}</pre>
       <div data-testid="navbar-now" data-now={now}>Now: {now}</div>
       <a href="/" data-spa="true" data-testid="navbar-home"><span>Home page</span></a>
       <a href="/boolean-static-path" data-spa="true" data-testid="navbar-boolean-static-path"><span>Boolean static path</span></a>
