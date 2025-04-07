@@ -11,7 +11,7 @@ import postcss from 'postcss';
 // @ts-ignore
 import tailwindPostcss from '@tailwindcss/postcss';
 import { config } from '../util/get-config';
-import { getXPineDistDir } from '../util/require';
+import { getXPineDistDir } from '../util/paths';
 import postcssRemoveLayers from '../util/postcss/remove-layers';
 import transformTSXFiles from '../build/esbuild/transformTSXFiles';
 import addDotJS from '../build/esbuild/addDotJS';
@@ -263,6 +263,10 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
 
   const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
   const componentFn = componentImport.default;
+
+  // onInit
+  if (componentImport?.onInit) await componentImport.onInit();
+
   const outputPath = componentDynamicPaths?.length ?
     componentDynamicPaths.reduce((total, current) => {
       return total.replace(`/[${current}]`, '');

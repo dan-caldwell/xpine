@@ -1,14 +1,9 @@
-import { setContext } from 'xpine';
+import context from "../context";
 
-await setContext('sidebar', (context) => {
-  return [
-    ...context,
-    {
-      color: 'blue',
-      number: 123,
-    }
-  ];
-});
+export async function onInit() {
+  console.log('page sending context on init');
+  context.navbar.set((currentContext) => [...currentContext, 'red']);
+}
 
 export default async function Component() {
   return (

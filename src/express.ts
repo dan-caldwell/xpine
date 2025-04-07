@@ -9,8 +9,21 @@ import path from 'path';
 import regex from './util/regex';
 import { getCompleteConfig, getConfigFiles } from './util/config-file';
 import { doctypeHTML } from './util/constants';
+import EventEmitter from 'events';
+
+class OnInitEmitter extends EventEmitter {};
+const onInitEmitter = new OnInitEmitter();
+
+onInitEmitter.on('triggerOnInit', async (onInitPaths) => {
+  console.log('trigger on init');
+  for (const pathName of onInitPaths) {
+    const pathImport = await import(pathName + `?cache=${Date.now()}`);
+    if (pathImport?.onInit) await pathImport.onInit();
+  }
+});
 
 export async function createRouter() {
+  const onInitPaths = [];
   const isDev = process.env.NODE_ENV === 'development';
   const methods = ['get', 'post', 'put', 'patch', 'delete'];
   const router = express.Router();
@@ -46,16 +59,26 @@ export async function createRouter() {
     }
 
     // Import route
-    const componentImport = isDev ? null : await import(route.path);
-    const componentFn = componentImport?.default;
+    const componentImport = await import(route.path);
+    const componentFn = isDev ? null : componentImport?.default;
 
+    // Init
+    if (componentImport?.onInit) {
+      await componentImport.onInit();
+      onInitPaths.push(route.path);
+    }
+
+    // Config
+    let config: ConfigFile = {};
     const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
-    let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
-    if (componentImport?.config) {
-      config = {
-        ...config,
-        ...componentImport.config,
-      };
+    if (!isDev) {
+      config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+      if (componentImport?.config) {
+        config = {
+          ...config,
+          ...componentImport.config,
+        };
+      }
     }
 
     // Push to the route results array
@@ -85,6 +108,10 @@ export async function createRouter() {
         }
         const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
         const componentFnDev = componentImportDev.default;
+
+        // Trigger new onInit for all routes
+        onInitEmitter.emit('triggerOnInit', onInitPaths);
+
         // Require every time only if in development mode
         if (isJSX) {
           let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());

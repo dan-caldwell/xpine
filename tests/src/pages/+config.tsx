@@ -15,5 +15,5 @@ export default {
           {children}
       </Base>
     )
-  }
+  },
 }

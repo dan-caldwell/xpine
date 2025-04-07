@@ -1,0 +1,1 @@
+- context should be set in a component so we don't have to clear it on each page refresh without knowing where the context is created
