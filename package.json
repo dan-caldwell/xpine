@@ -33,6 +33,7 @@
     "test:dev": "cd ./tests && npm run dev",
     "test:start": "cd ./tests && npm run build && npm start",
     "test:build": "cd ./tests && npm run build",
+    "test:build:dev": "cd ./tests && npm run build:dev",
     "lint": "npx eslint",
     "fix": "npx eslint --fix",
     "release:patch": "npm run build && npm version patch && npm publish"

@@ -1,12 +1,13 @@
-import context from "../context";
+import Button from "../components/Button";
+import { NavbarContext } from "../context";
 
-export async function onInit() {
-  console.log('page sending context on init');
-  context.navbar.set((currentContext) => [...currentContext, 'red']);
-}
+NavbarContext.context.data = [...NavbarContext.context.data, 'red'];
 
 export default async function Component() {
   return (
-    <div>Page sending context</div>
+    <div>
+      <div>Page sending context</div>
+      <Button />
+    </div>
   )
 }

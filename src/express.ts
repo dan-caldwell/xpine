@@ -15,10 +15,9 @@ class OnInitEmitter extends EventEmitter {};
 const onInitEmitter = new OnInitEmitter();
 
 onInitEmitter.on('triggerOnInit', async (onInitPaths) => {
-  console.log('trigger on init');
   for (const pathName of onInitPaths) {
     const pathImport = await import(pathName + `?cache=${Date.now()}`);
-    if (pathImport?.onInit) await pathImport.onInit();
+    if (pathImport?.config?.onInit) await pathImport.config.onInit();
   }
 });
 
@@ -63,8 +62,8 @@ export async function createRouter() {
     const componentFn = isDev ? null : componentImport?.default;
 
     // Init
-    if (componentImport?.onInit) {
-      await componentImport.onInit();
+    if (componentImport?.config?.onInit) {
+      await componentImport.config?.onInit();
       onInitPaths.push(route.path);
     }
 

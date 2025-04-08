@@ -17,8 +17,10 @@ export default function transformTSXFiles(componentData: ComponentData[], pageCo
           ts.ScriptTarget.Latest
         );
         const cleanedContent = removeClientScriptInTSXFile(args.path, source);
-        const htmlImportStart = 'import { html } from \'xpine\';\n';
-        const newContent = `${htmlImportStart}${cleanedContent.content}`;
+        const htmlImportStart = [
+          'import { html } from \'xpine\';'
+        ]
+        const newContent = `${htmlImportStart.join('\n')}${cleanedContent.content}`;
         componentData.push({
           ...args,
           contents: `${htmlImportStart}${cleanedContent.fullContent}`,
