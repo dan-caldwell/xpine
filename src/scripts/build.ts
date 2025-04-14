@@ -50,10 +50,10 @@ export async function buildApp(args: BuildAppArgs) {
     await buildCSS(disableTailwind);
     await buildPublicFolderSymlinks();
     await buildOnLoadFile(componentData, isDev);
-    await triggerXPineOnLoad();
+    if (!isDev) await triggerXPineOnLoad();
     // Build files with configs if there are any
     if (!isDev) await buildFilesWithConfigs(componentData);
-    context.clear();
+    if (!isDev) context.clear();
   } catch (err) {
     console.error('Build failed');
     console.error(err);
@@ -354,6 +354,10 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
       });
     }
   }
+  // Sort alphabetically to ensure builds are always the same
+  onLoadFiles.sort((a, b) => {
+    return a.path.localeCompare(b.path)
+  });
   // Import each file and add to dist
   for (const file of onLoadFiles) {
     const result = getXpineOnLoadFunction(file.path, file.source, onLoadFileResult);
@@ -362,8 +366,10 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
   }
   const output = `
     ${onLoadFileResult.imports}
+    import { context } from "xpine";
     export default async function triggerOnLoad() {
       ${onLoadFileResult.fn}
+      context.runArrayQueue();
     }
   `;
   // Transform the raw file into built Javascript

@@ -3,6 +3,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { OnLoadFileResult } from '../scripts/build';
 import { config as xpineConfig } from '../util/get-config';
+import { context } from '../context';
 
 type ImportDeclaration = {
   node: ts.Node;
@@ -213,7 +214,9 @@ export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, 
       let text = child.getText(source);
       if (text.includes('xpineOnLoad')) {
         // @ts-ignore
-        value.fn = value.fn + '\n' + (child?.body?.getText(source) || '');
+        const body = (child?.body?.getText(source) || '');
+        // Make the contents of the xpineOnLoad function an IIFE
+        value.fn = value.fn + '\n' + body ? `(function() ${(body)})();` : '';
       }
     }
   });
@@ -221,6 +224,7 @@ export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, 
 }
 
 export async function triggerXPineOnLoad(noCache: boolean = false) {
+  context.clear();
   const xpineOnLoad = (await import(
     path.join(xpineConfig.distDir, `./__xpineOnLoad.js${noCache ? `?cache=${Date.now()}` : ''}`),
   ))?.default;

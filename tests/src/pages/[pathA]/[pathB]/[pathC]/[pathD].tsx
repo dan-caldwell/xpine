@@ -1,9 +1,9 @@
 import { ServerRequest } from 'xpine/dist/types';
-import { addToArray, context } from 'xpine';
+import { context } from 'xpine';
 import axios from 'axios';
 
 export function xpineOnLoad() {
-  context.set('navbar', addToArray('pathD', 0), []);
+  context.addToArray('navbar', 'pathD', 0);
 }
 
 export const config = {
