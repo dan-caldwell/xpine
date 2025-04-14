@@ -3,7 +3,6 @@ import { context } from 'xpine';
 export default async function Navbar() {
   const now = Date.now();
   const navbar = context.get('navbar');
-
   return (
     <div data-testid="navbar" data-persistent="navbar" style="display: flex; flex-direction: column;">
       <pre>{JSON.stringify(navbar, null, 2)}</pre>

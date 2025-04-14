@@ -1,11 +1,11 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { build } from 'esbuild';
-import ts from 'typescript';
 import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
-  getXpineOnLoadFunction
+  getXpineOnLoadFunction,
+  triggerXPineOnLoad
 } from '../build/typescript-builder';
 import { globSync } from 'glob';
 import postcss from 'postcss';
@@ -21,6 +21,7 @@ import regex from '../util/regex';
 import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
 import { doctypeHTML, staticComment } from '../util/constants';
 import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types';
+import { context } from '../context';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -48,9 +49,11 @@ export async function buildApp(args: BuildAppArgs) {
     fs.removeSync(config.distTempFolder);
     await buildCSS(disableTailwind);
     await buildPublicFolderSymlinks();
+    await buildOnLoadFile(componentData, isDev);
+    await triggerXPineOnLoad();
     // Build files with configs if there are any
     if (!isDev) await buildFilesWithConfigs(componentData);
-    await buildOnLoadFile(componentData, isDev);
+    context.clear();
   } catch (err) {
     console.error('Build failed');
     console.error(err);

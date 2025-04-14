@@ -4,6 +4,7 @@ export type State<StateProps> = {
   get: (id: string) => StateProps;
   set: (id: string, callback: SetContext<StateProps>, defaultValue?: any) => void;
   clear: () => void;
+  getAll: () => any;
 }
 
 type ContextType<Type> = {
@@ -22,6 +23,9 @@ export function createContext<Type>(value: ContextType<Type>): State<Type> {
     },
     clear() {
       stateValue = {} as ContextType<Type>;
+    },
+    getAll() {
+      return stateValue;
     }
   }
 }

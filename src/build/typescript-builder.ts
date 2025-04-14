@@ -2,6 +2,7 @@ import ts from 'typescript';
 import fs from 'fs-extra';
 import path from 'path';
 import { OnLoadFileResult } from '../scripts/build';
+import { config as xpineConfig } from '../util/get-config';
 
 type ImportDeclaration = {
   node: ts.Node;
@@ -217,4 +218,11 @@ export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, 
     }
   });
   return value;
+}
+
+export async function triggerXPineOnLoad(noCache: boolean = false) {
+  const xpineOnLoad = (await import(
+    path.join(xpineConfig.distDir, `./__xpineOnLoad.js${noCache ? `?cache=${Date.now()}` : ''}`),
+  ))?.default;
+  if (xpineOnLoad) await xpineOnLoad();
 }

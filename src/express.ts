@@ -12,6 +12,7 @@ import { doctypeHTML } from './util/constants';
 import EventEmitter from 'events';
 import { context } from './context';
 import { config as xpineConfig } from './util/get-config';
+import { triggerXPineOnLoad } from './build/typescript-builder';
 
 class OnInitEmitter extends EventEmitter { };
 const onInitEmitter = new OnInitEmitter();
@@ -47,8 +48,7 @@ export async function createRouter() {
   const configFiles = globSync(config.pagesDir + '/**/+config.{tsx,ts}');
 
   // Onload
-  const xpineOnLoad = (await import(path.join(xpineConfig.distDir, './__xpineOnLoad.js')))?.default;
-  if (xpineOnLoad && !isDev) await xpineOnLoad();
+  await triggerXPineOnLoad();
 
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
@@ -114,8 +114,7 @@ export async function createRouter() {
           return;
         }
 
-        const xpineOnLoad = (await import(path.join(xpineConfig.distDir, './__xpineOnLoad.js') + `?cache=${Date.now()}`))?.default;
-        if (xpineOnLoad) await xpineOnLoad();
+        await triggerXPineOnLoad(true);
 
         const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
         const componentFnDev = componentImportDev.default;
