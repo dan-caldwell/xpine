@@ -1,7 +1,7 @@
 import { WrapperProps } from "xpine/dist/types";
 import Base from "../components/Base";
 import Navbar from "../components/Navbar";
-import { NavbarContext } from "../context";
+import { createContext } from 'xpine';
 
 export default {
   wrapper({ req, children, data }: WrapperProps) {
@@ -11,12 +11,8 @@ export default {
         description={data?.description}
         req={req}
       >
-        <NavbarContext>
-          <>
-            <div data-testid="base-config"></div>
-            {children}
-          </>
-        </NavbarContext>
+        <div data-testid="base-config"></div>
+        {children}
         <Navbar />
       </Base>
     )

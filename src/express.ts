@@ -10,24 +10,22 @@ import regex from './util/regex';
 import { getCompleteConfig, getConfigFiles } from './util/config-file';
 import { doctypeHTML } from './util/constants';
 import EventEmitter from 'events';
+import { context } from './context';
+import { config as xpineConfig } from './util/get-config';
 
-class OnInitEmitter extends EventEmitter {};
+class OnInitEmitter extends EventEmitter { };
 const onInitEmitter = new OnInitEmitter();
 
-onInitEmitter.on('triggerOnInit', async (onInitPaths) => {
-  for (const pathName of onInitPaths) {
-    const pathImport = await import(pathName + `?cache=${Date.now()}`);
+onInitEmitter.on('triggerOnInit', async (paths) => {
+  for (const routePath of paths) {
+    const pathImport = await import(routePath.path + `?cache=${Date.now()}`);
     if (pathImport?.config?.onInit) await pathImport.config.onInit();
   }
 });
 
-export async function createRouter() {
-  const onInitPaths = [];
-  const isDev = process.env.NODE_ENV === 'development';
-  const methods = ['get', 'post', 'put', 'patch', 'delete'];
-  const router = express.Router();
+function getAllBuiltRoutes() {
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
-  const routeMap = routes.map(route => {
+  return routes.map(route => {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
     // Replace index
@@ -38,8 +36,19 @@ export async function createRouter() {
       originalRoute: route,
     };
   }).filter(Boolean);
+}
+
+export async function createRouter() {
+  const isDev = process.env.NODE_ENV === 'development';
+  const methods = ['get', 'post', 'put', 'patch', 'delete'];
+  const router = express.Router();
+  const routeMap = getAllBuiltRoutes();
   const routeResults = [];
   const configFiles = globSync(config.pagesDir + '/**/+config.{tsx,ts}');
+
+  // Onload
+  const xpineOnLoad = (await import(path.join(xpineConfig.distDir, './__xpineOnLoad.js')))?.default;
+  if (xpineOnLoad && !isDev) await xpineOnLoad();
 
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
@@ -64,7 +73,6 @@ export async function createRouter() {
     // Init
     if (componentImport?.config?.onInit) {
       await componentImport.config?.onInit();
-      onInitPaths.push(route.path);
     }
 
     // Config
@@ -105,11 +113,15 @@ export async function createRouter() {
           }
           return;
         }
+
+        const xpineOnLoad = (await import(path.join(xpineConfig.distDir, './__xpineOnLoad.js') + `?cache=${Date.now()}`))?.default;
+        if (xpineOnLoad) await xpineOnLoad();
+
         const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
         const componentFnDev = componentImportDev.default;
 
         // Trigger new onInit for all routes
-        onInitEmitter.emit('triggerOnInit', onInitPaths);
+        onInitEmitter.emit('triggerOnInit', getAllBuiltRoutes());
 
         // Require every time only if in development mode
         if (isJSX) {
@@ -121,8 +133,9 @@ export async function createRouter() {
             };
           }
           const data = config?.data ? await config.data(req) : null;
-          const originalResult = await componentFnDev({ req, res, data, });
+          const originalResult = await componentFnDev({ req, res, data, config });
           const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
+          context.clear();
           res.send(doctypeHTML + output);
         } else {
           await componentFnDev(req, res);

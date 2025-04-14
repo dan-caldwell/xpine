@@ -12,14 +12,19 @@ export default {
     ]
   },
   async data(req: ServerRequest) {
+    const url = `https://jsonplaceholder.typicode.com/posts/${req.params.pathC}`;
     try {
-      const { data } = await axios.get(`https://jsonplaceholder.typicode.com/posts/${req.params.pathC}`);
+      const { data } = await axios.get(url);
       return {
         ...data,
         ...req.params,
       };
     } catch (err) {
-      console.error('could not fetch', req);
+      console.error('could not fetch', url);
+      return {
+        ...req.params,
+        data: {},
+      }
     }
   }
 }

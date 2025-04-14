@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import ts from 'typescript';
 
 export type XPineConfig = {
   [key: string]: any;
@@ -22,7 +23,7 @@ export type WrapperProps = {
 }
 
 export type ConfigFile = {
-  staticPaths?: boolean | (() => Promise<{ [key: string]: string}[]>);
+  staticPaths?: boolean | (() => Promise<{ [key: string]: string }[]>);
   wrapper?: (props: WrapperProps) => Promise<any>;
   data?: (req: ServerRequest) => Promise<any>;
 }
@@ -43,4 +44,5 @@ export type ComponentData = {
   contents: string;
   clientContent: string;
   configFiles: string[];
+  source: ts.SourceFile;
 }

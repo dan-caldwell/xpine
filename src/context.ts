@@ -1,73 +1,37 @@
 export type SetContext<Type> = (currentContext: Type) => Type;
 
 export type State<StateProps> = {
-  get: () => StateProps;
-  set: (callback: SetContext<StateProps>) => void;
+  get: (id: string) => StateProps;
+  set: (id: string, callback: SetContext<StateProps>, defaultValue?: any) => void;
+  clear: () => void;
 }
 
-// export function createContext<Type>(value: Type): State<Type> {
-//   let stateValue: Type = value;
-//   return {
-//     get(): Type {
-//       return stateValue;
-//     },
-//     set(callback: SetContext<Type>): void {
-//       stateValue = callback(stateValue);
-//       console.log("setting context", stateValue);
-//     },
-//   }
-// }
-
-export function getConfig() {
-
+type ContextType<Type> = {
+  [key: string]: Type;
 }
 
-export function createContext(initialValue: any) {
-  const target = {
-    data: initialValue,
-  }
-  const handler = {
-    get(target, prop, receiver) {
-      // @ts-ignore
-      return Reflect.get(...arguments);
+export function createContext<Type>(value: ContextType<Type>): State<Type> {
+  let stateValue = value;
+  return {
+    get(id: string): Type {
+      return stateValue[id];
     },
-    set(target, prop, value, receiver) {
-      target[prop] = value;
-      // @ts-ignore
-      return Reflect.set(...arguments);
+    set(id: string, callback: SetContext<Type>, defaultValue?: any): void {
+      if (!stateValue[id]) stateValue[id] = defaultValue ?? null;
+      stateValue[id] = callback(stateValue[id]);
+    },
+    clear() {
+      stateValue = {} as ContextType<Type>;
     }
   }
-  return new Proxy(target, handler);
 }
 
+export const context = createContext({});
 
-// export class Context {
-//   context = null;
-//   children = null;
-
-//   constructor(initialValue) {
-//     this.context = initialValue;
-//   }
-
-//   initContext(callback: SetContext<any>) {
-    
-//   }
-
-//   provider() {
-//     this.context = createContext(this.initialValue);
-//     return {
-//       render: this.render,
-//     }
-//   }
-//   render({ children }) {
-//     return children;
-//   }
-// }
-
-// export function getContext(contextFn) {
-//   return contextFn.context.get();
-// }
-
-// export function setContext(contextFn, callback: SetContext<any>) {
-//   return contextFn.set(callback);
-// }
+export function addToArray(newValue: any, position?: number) {
+  return function (currentValue: any) {
+    if (!currentValue) return [newValue];
+    if (typeof position === 'number') return currentValue.toSpliced(position, 0, newValue);
+    return [...currentValue, newValue];
+  }
+}

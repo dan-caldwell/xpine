@@ -16,7 +16,7 @@ export async function runDevServer() {
   const rebuildEmitter = createRebuildEmitter();
 
   // Initial server set up
-  await buildApp(true);
+  await buildApp({ isDev: true });
 
   const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
 
@@ -37,7 +37,7 @@ export async function runDevServer() {
       rebuildEmitter.emit('rebuild-server');
       return;
     }
-    await buildApp(true);
+    await buildApp({ isDev: true });
     refreshEmitter.emit('refresh');
   });
 
@@ -46,7 +46,7 @@ export async function runDevServer() {
   });
 
   async function rebuildServer() {
-    await buildApp(true);
+    await buildApp({ isDev: true });
     const startServer = (await import(config.serverDistAppPath + `?cache=${Date.now()}`)).default;
     appServer = await startServer();
   }

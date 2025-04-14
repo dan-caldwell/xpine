@@ -26,6 +26,7 @@ export default function transformTSXFiles(componentData: ComponentData[], pageCo
           contents: `${htmlImportStart}${cleanedContent.fullContent}`,
           clientContent: cleanedContent.clientContent,
           configFiles: isAConfigFile(args?.path) ? null : getConfigFiles(args.path, pageConfigFiles),
+          source,
         });
         return {
           contents: newContent,

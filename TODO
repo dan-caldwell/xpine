@@ -1,3 +1,3 @@
-- context should be set in a component so we don't have to clear it on each page refresh without knowing where the context is created
 - need a way to get the config currently being used inside any component
-- perhaps to simplify it should just be solving the issue of the dev server constantly pushing new items instead of a more complicated approach
+- how to order context
+- static file generation for context
