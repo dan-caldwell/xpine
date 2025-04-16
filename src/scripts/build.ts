@@ -22,6 +22,7 @@ import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
 import { doctypeHTML, staticComment } from '../util/constants';
 import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types';
 import { context } from '../context';
+import ts from 'typescript';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -166,6 +167,14 @@ async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: an
   };
   const componentsAndDataFiles = componentData.concat(dataFiles);
   for (const component of componentsAndDataFiles) {
+    if (!component.source) {
+      // Single source file
+      component.source = ts.createSourceFile(
+        component.path,
+        component.contents,
+        ts.ScriptTarget.Latest
+      );
+    }
     // Single source file
     const dataFunctionResult = findDataAttributesAndFunctions(component.source, component.source);
     dataFunctionResults.foundDataAttributes.push(...dataFunctionResult.foundDataAttributes);
