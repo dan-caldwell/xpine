@@ -1,17 +1,18 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { build } from 'esbuild';
-import ts from 'typescript';
 import {
   convertEntryPointsToSingleFile,
-  findDataAttributesAndFunctions
+  findDataAttributesAndFunctions,
+  getXpineOnLoadFunction,
+  triggerXPineOnLoad
 } from '../build/typescript-builder';
 import { globSync } from 'glob';
 import postcss from 'postcss';
 // @ts-ignore
 import tailwindPostcss from '@tailwindcss/postcss';
 import { config } from '../util/get-config';
-import { getXPineDistDir } from '../util/require';
+import { getXPineDistDir } from '../util/paths';
 import postcssRemoveLayers from '../util/postcss/remove-layers';
 import transformTSXFiles from '../build/esbuild/transformTSXFiles';
 import addDotJS from '../build/esbuild/addDotJS';
@@ -20,6 +21,7 @@ import regex from '../util/regex';
 import { getCompleteConfig, sourcePathToDistPath } from '../util/config-file';
 import { doctypeHTML, staticComment } from '../util/constants';
 import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types';
+import { context } from '../context';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -28,7 +30,16 @@ const allPackages = Object.keys(packageJson.devDependencies).concat(Object.keys(
 
 const xpineDistDir = getXPineDistDir();
 
-export async function buildApp(isDev = false, removePreviousBuild = false) {
+type BuildAppArgs = {
+  isDev?: boolean;
+  removePreviousBuild?: boolean;
+  disableTailwind?: boolean;
+}
+
+export async function buildApp(args: BuildAppArgs) {
+  const isDev = args?.isDev || false;
+  const removePreviousBuild = args?.removePreviousBuild || false;
+  const disableTailwind = args?.disableTailwind || false;
   try {
     if (removePreviousBuild) fs.removeSync(config.distDir);
     const srcDirFiles = globSync(config.srcDir + '/**/*.{js,ts,tsx,jsx}');
@@ -36,10 +47,13 @@ export async function buildApp(isDev = false, removePreviousBuild = false) {
     const alpineDataFile = await buildAlpineDataFile(componentData, dataFiles);
     await buildClientSideFiles([alpineDataFile], isDev);
     fs.removeSync(config.distTempFolder);
-    await buildCSS();
+    await buildCSS(disableTailwind);
     await buildPublicFolderSymlinks();
+    await buildOnLoadFile(componentData, isDev);
+    if (!isDev) await triggerXPineOnLoad();
     // Build files with configs if there are any
     if (!isDev) await buildFilesWithConfigs(componentData);
+    if (!isDev) context.clear();
   } catch (err) {
     console.error('Build failed');
     console.error(err);
@@ -153,12 +167,7 @@ async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: an
   const componentsAndDataFiles = componentData.concat(dataFiles);
   for (const component of componentsAndDataFiles) {
     // Single source file
-    const sourceFile = ts.createSourceFile(
-      component.path,
-      component.contents,
-      ts.ScriptTarget.Latest
-    );
-    const dataFunctionResult = findDataAttributesAndFunctions(sourceFile, sourceFile);
+    const dataFunctionResult = findDataAttributesAndFunctions(component.source, component.source);
     dataFunctionResults.foundDataAttributes.push(...dataFunctionResult.foundDataAttributes);
     const foundFunctionsWithPath = dataFunctionResult.foundFunctions.map(item => {
       return {
@@ -183,11 +192,13 @@ async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: an
   return config.alpineDataPath;
 }
 
-export async function buildCSS() {
+export async function buildCSS(disableTailwind?: boolean) {
   const cssFiles = globSync(config.srcDir + '/**/*.css');
   for (const file of cssFiles) {
     const fileContents = fs.readFileSync(file, 'utf-8');
-    const result = await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(fileContents, { from: file, });
+    const result = disableTailwind ?
+      fileContents :
+      await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(fileContents, { from: file, });
     // Write to dist folder
     const newPath = file.replace(config.srcDir, config.distDir);
     fs.ensureFileSync(newPath);
@@ -263,6 +274,10 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
 
   const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
   const componentFn = componentImport.default;
+
+  // onInit
+  if (componentImport?.onInit) await componentImport.onInit();
+
   const outputPath = componentDynamicPaths?.length ?
     componentDynamicPaths.reduce((total, current) => {
       return total.replace(`/[${current}]`, '');
@@ -317,4 +332,64 @@ export function getComponentDynamicPaths(componentPath: string): string[] {
     output.push(match[2]);
   }
   return output;
+}
+
+export type OnLoadFileResult = {
+  imports: string;
+  fn: string;
+}
+
+// If a component has an onLoad export, add it to the onLoad file which gets when the server gets created
+export async function buildOnLoadFile(componentData: ComponentData[], isDev?: boolean) {
+  const onLoadFiles = [];
+  const onLoadFileResult: OnLoadFileResult = {
+    imports: '',
+    fn: '',
+  }
+  for (const component of componentData) {
+    if (component.contents.includes('xpineOnLoad')) {
+      onLoadFiles.push({
+        path: sourcePathToDistPath(component.path),
+        source: component.source,
+      });
+    }
+  }
+  // Sort alphabetically to ensure builds are always the same
+  onLoadFiles.sort((a, b) => {
+    return a.path.localeCompare(b.path)
+  });
+  // Import each file and add to dist
+  for (const file of onLoadFiles) {
+    const result = getXpineOnLoadFunction(file.path, file.source, onLoadFileResult);
+    onLoadFileResult.fn += result.fn;
+    onLoadFileResult.imports += result.imports;
+  }
+  const output = `
+    ${onLoadFileResult.imports}
+    import { context } from "xpine";
+    export default async function triggerOnLoad() {
+      ${onLoadFileResult.fn}
+      context.runArrayQueue();
+    }
+  `;
+  // Transform the raw file into built Javascript
+  const onLoadFilePath = path.join(config.distDir, './__xpineOnLoad.ts'); // No extension
+  // Write the typescript file
+  fs.writeFileSync(onLoadFilePath, output);
+
+  // Compile the typescript file
+  await build({
+    entryPoints: [onLoadFilePath],
+    format: 'esm',
+    platform: 'node',
+    outdir: config.distDir,
+    bundle: true,
+    sourcemap: isDev ? 'inline' : false,
+    external: allPackages,
+    jsx: 'transform',
+    minify: !isDev,
+    plugins: [
+      addDotJS(allPackages, extensions, isDev),
+    ],
+  });
 }

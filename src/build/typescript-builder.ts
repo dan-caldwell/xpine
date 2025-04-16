@@ -1,6 +1,9 @@
 import ts from 'typescript';
 import fs from 'fs-extra';
 import path from 'path';
+import { OnLoadFileResult } from '../scripts/build';
+import { config as xpineConfig } from '../util/get-config';
+import { context } from '../context';
 
 type ImportDeclaration = {
   node: ts.Node;
@@ -130,19 +133,7 @@ export function removeClientScriptInTSXFile(pathName: string, source: ts.SourceF
     // Hoist the client imports to above the <script /> tag
     if (child.kind === ts.SyntaxKind.ImportDeclaration && child.pos >= clientDataStart) {
       const text = child.getText(source);
-      child.forEachChild(child => {
-        if (child.kind === ts.SyntaxKind.StringLiteral) {
-          // Keep track of client imports needed for path replacement to be absolute
-          const text = child.getText(source);
-          const importPath = text.replace(/[\"\']/g, '');
-          const isRelativeImport = importPath.startsWith('.') || importPath.startsWith('/');
-          if (!isRelativeImport) return;
-          clientImportsToReplace.push({
-            old: importPath,
-            new: path.join(path.dirname(pathName), importPath),
-          });
-        }
-      });
+      clientImportsToReplace.push(...getImportsToAbsolutePaths(child, source, pathName))
       clientImportsToHoist.push(text);
     }
   });
@@ -173,6 +164,24 @@ export function createStaticFile(pathName: string, source: ts.SourceFile) {
   });
 }
 
+export function getImportsToAbsolutePaths(child: ts.Node, source: ts.SourceFile, pathName: string) {
+  const output = [];
+  child.forEachChild(child => {
+    if (child.kind === ts.SyntaxKind.StringLiteral) {
+      // Keep track of imports needed for path replacement to be absolute
+      const text = child.getText(source);
+      const importPath = text.replace(/[\"\']/g, '');
+      const isRelativeImport = importPath.startsWith('.') || importPath.startsWith('/');
+      if (!isRelativeImport) return;
+      output.push({
+        old: importPath,
+        new: path.join(path.dirname(pathName), importPath),
+      });
+    }
+  });
+  return output;
+}
+
 export function printRecursiveFrom(
   node: ts.Node, indentLevel: number, sourceFile: ts.SourceFile
 ) {
@@ -184,4 +193,40 @@ export function printRecursiveFrom(
   node.forEachChild(child =>
     printRecursiveFrom(child, indentLevel + 1, sourceFile)
   );
+}
+
+export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, onLoadFileResult: OnLoadFileResult) {
+  const value = {
+    imports: '',
+    fn: '',
+  };
+  source.forEachChild(child => {
+    if (child.kind == ts.SyntaxKind.ImportDeclaration) {
+      let importText = child.getText(source);
+      // Adjust import locations
+      const importOutput = getImportsToAbsolutePaths(child, source, pathName);
+      for (const importItem of importOutput) {
+        importText = importText.replace(importItem.old, importItem.new);
+      }
+      value.imports = importText + '\n' + value.imports;
+    }
+    if ([ts.SyntaxKind.FirstStatement, ts.SyntaxKind.FunctionDeclaration].includes(child.kind)) {
+      let text = child.getText(source);
+      if (text.includes('xpineOnLoad')) {
+        // @ts-ignore
+        const body = (child?.body?.getText(source) || '');
+        // Make the contents of the xpineOnLoad function an IIFE
+        value.fn = value.fn + '\n' + body ? `(function() ${(body)})();` : '';
+      }
+    }
+  });
+  return value;
+}
+
+export async function triggerXPineOnLoad(noCache: boolean = false) {
+  context.clear();
+  const xpineOnLoad = (await import(
+    path.join(xpineConfig.distDir, `./__xpineOnLoad.js${noCache ? `?cache=${Date.now()}` : ''}`),
+  ))?.default;
+  if (xpineOnLoad) await xpineOnLoad();
 }

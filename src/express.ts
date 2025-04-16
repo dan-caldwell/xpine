@@ -9,13 +9,24 @@ import path from 'path';
 import regex from './util/regex';
 import { getCompleteConfig, getConfigFiles } from './util/config-file';
 import { doctypeHTML } from './util/constants';
+import EventEmitter from 'events';
+import { context } from './context';
+import { config as xpineConfig } from './util/get-config';
+import { triggerXPineOnLoad } from './build/typescript-builder';
 
-export async function createRouter() {
-  const isDev = process.env.NODE_ENV === 'development';
-  const methods = ['get', 'post', 'put', 'patch', 'delete'];
-  const router = express.Router();
+class OnInitEmitter extends EventEmitter { };
+const onInitEmitter = new OnInitEmitter();
+
+onInitEmitter.on('triggerOnInit', async (paths) => {
+  for (const routePath of paths) {
+    const pathImport = await import(routePath.path + `?cache=${Date.now()}`);
+    if (pathImport?.config?.onInit) await pathImport.config.onInit();
+  }
+});
+
+function getAllBuiltRoutes() {
   const routes = globSync(config.pagesDir + '/**/*.{tsx,ts}');
-  const routeMap = routes.map(route => {
+  return routes.map(route => {
     const routeFormatted = route.split(config.pagesDir).pop().replace('.tsx', '').replace('.js', '').replace('.ts', '');
     if (routeFormatted.endsWith('+config')) return;
     // Replace index
@@ -26,8 +37,18 @@ export async function createRouter() {
       originalRoute: route,
     };
   }).filter(Boolean);
+}
+
+export async function createRouter() {
+  const isDev = process.env.NODE_ENV === 'development';
+  const methods = ['get', 'post', 'put', 'patch', 'delete'];
+  const router = express.Router();
+  const routeMap = getAllBuiltRoutes();
   const routeResults = [];
   const configFiles = globSync(config.pagesDir + '/**/+config.{tsx,ts}');
+
+  // Onload
+  await triggerXPineOnLoad();
 
   for (const route of routeMap) {
     const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
@@ -46,16 +67,25 @@ export async function createRouter() {
     }
 
     // Import route
-    const componentImport = isDev ? null : await import(route.path);
-    const componentFn = componentImport?.default;
+    const componentImport = await import(route.path);
+    const componentFn = isDev ? null : componentImport?.default;
 
+    // Init
+    if (componentImport?.config?.onInit) {
+      await componentImport.config?.onInit();
+    }
+
+    // Config
+    let config: ConfigFile = {};
     const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
-    let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
-    if (componentImport?.config) {
-      config = {
-        ...config,
-        ...componentImport.config,
-      };
+    if (!isDev) {
+      config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+      if (componentImport?.config) {
+        config = {
+          ...config,
+          ...componentImport.config,
+        };
+      }
     }
 
     // Push to the route results array
@@ -83,8 +113,15 @@ export async function createRouter() {
           }
           return;
         }
+
+        await triggerXPineOnLoad(true);
+
         const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
         const componentFnDev = componentImportDev.default;
+
+        // Trigger new onInit for all routes
+        onInitEmitter.emit('triggerOnInit', getAllBuiltRoutes());
+
         // Require every time only if in development mode
         if (isJSX) {
           let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
@@ -95,8 +132,9 @@ export async function createRouter() {
             };
           }
           const data = config?.data ? await config.data(req) : null;
-          const originalResult = await componentFnDev({ req, res, data, });
+          const originalResult = await componentFnDev({ req, res, data, config });
           const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
+          context.clear();
           res.send(doctypeHTML + output);
         } else {
           await componentFnDev(req, res);

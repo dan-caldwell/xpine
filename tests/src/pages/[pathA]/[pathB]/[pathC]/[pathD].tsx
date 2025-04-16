@@ -1,6 +1,10 @@
 import { ServerRequest } from 'xpine/dist/types';
+import { context } from 'xpine';
 import axios from 'axios';
 
+export function xpineOnLoad() {
+  context.addToArray('navbar', 'pathD', 0);
+}
 
 export const config = {
   staticPaths() {
@@ -14,14 +18,19 @@ export const config = {
     ]
   },
   async data(req: ServerRequest) {
+    const url = `https://jsonplaceholder.typicode.com/posts/${req.params.pathD}`;
     try {
-      const { data } = await axios.get(`https://jsonplaceholder.typicode.com/posts/${req.params.pathD}`);
+      const { data } = await axios.get(url);
       return {
         ...data,
         ...req.params,
       };
     } catch (err) {
-      console.error('could not fetch', req);
+      console.error('could not fetch', url);
+      return {
+        ...req.params,
+        data: {},
+      }
     }
   }
 }

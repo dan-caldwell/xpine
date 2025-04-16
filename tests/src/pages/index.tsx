@@ -18,13 +18,13 @@ export const config = {
       >
         <Navbar />
         <div data-testid="home-page-wrapper"></div>
-          {children}
+        {children}
       </Base>
     )
-  }
+  },
 }
 
-export default function Home() {
+export default function Home({ config }) {
   return (
     <div data-testid="hello-world">Hello world</div>
   );

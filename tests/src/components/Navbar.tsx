@@ -1,8 +1,17 @@
-export default function Navbar() {
+import { context } from 'xpine';
+
+export default async function Navbar() {
   const now = Date.now();
+  const navbar = context.get('navbar');
   return (
     <div data-testid="navbar" data-persistent="navbar" style="display: flex; flex-direction: column;">
+      <div>
+        {navbar.map((item, index) => {
+          return <div data-testid={`navbar-context-${item}`} data-index={index}>{item}</div>
+        })}
+      </div>
       <div data-testid="navbar-now" data-now={now}>Now: {now}</div>
+      <a href="/page-sending-context" data-spa="true" data-testid="page-sending-context">Page sending context</a>
       <a href="/" data-spa="true" data-testid="navbar-home"><span>Home page</span></a>
       <a href="/boolean-static-path" data-spa="true" data-testid="navbar-boolean-static-path"><span>Boolean static path</span></a>
       <a href="/base-static-path" data-spa="true" data-testid="navbar-base-static-path"><span>Base static path</span></a>
