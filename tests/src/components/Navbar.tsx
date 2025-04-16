@@ -5,7 +5,11 @@ export default async function Navbar() {
   const navbar = context.get('navbar');
   return (
     <div data-testid="navbar" data-persistent="navbar" style="display: flex; flex-direction: column;">
-      <pre>{JSON.stringify(navbar, null, 2)}</pre>
+      <div>
+        {navbar.map((item, index) => {
+          return <div data-testid={`navbar-context-${item}`} data-index={index}>{item}</div>
+        })}
+      </div>
       <div data-testid="navbar-now" data-now={now}>Now: {now}</div>
       <a href="/page-sending-context" data-spa="true" data-testid="page-sending-context">Page sending context</a>
       <a href="/" data-spa="true" data-testid="navbar-home"><span>Home page</span></a>

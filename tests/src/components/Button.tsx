@@ -1,7 +1,7 @@
 import { context } from 'xpine';
 
 export function xpineOnLoad() {
-  context.addToArray('navbar', 'orange');
+  context.addToArray('navbar', 'button');
 }
 
 export default function Button() {
