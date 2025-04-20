@@ -5,7 +5,6 @@ async function replaceDocumentContentsWithLinkResponse() {
   for (const link of links) {
     link.addEventListener('click', updatePageOnLinkClick);
   }
-
 }
 
 async function updatePageOnLinkClick(e) {
@@ -44,17 +43,28 @@ async function getNewPageContent(href) {
     const dom = parser.parseFromString(text, 'text/html');
     diffHead(dom);
     const newScripts = removeBodyScripts(dom);
-    const clonedPersistentNodes = getPersistentNodesFromDocument(dom);
-    const body = dom.body.innerHTML;
-    document.body.innerHTML = body;
-    for (const clonedNode of clonedPersistentNodes) {
-      // @ts-ignore
-      const newNode = document.body.querySelector(`[data-persistent="${clonedNode?.getAttribute('data-persistent')}"]`);
-      newNode.replaceWith(clonedNode);
+    const { persistentArea, persistentElements } = replacePersistentNodesOnDocument(dom);
+    // Here we need to work around the persistent nodes in order to not have to reload images every time
+    const documentRoot = document.body.querySelector('#xpine-root');
+    const domRoot = dom?.body?.querySelector('#xpine-root');
+    if (!documentRoot || !domRoot) {
+      throw {
+        message: 'Every page must be wrapped in an #xpine-root tag',
+        documentRoot,
+        domRoot,
+      };
     }
+    documentRoot?.replaceWith(domRoot);
+    for (const el of persistentElements) {
+      // @ts-ignore
+      const newNode = document.body.querySelector(`[data-persistent="${el?.getAttribute('data-persistent')}"]`);
+      newNode.replaceWith(el);
+    }
+    persistentArea.remove();
     replaceAttributesOnDocumentBody(dom);
     replaceDocumentContentsWithLinkResponse();
-    for (const script of newScripts) document.body.appendChild(script);
+    const newDocumentRoot = document.body.querySelector('#xpine-root');
+    for (const script of newScripts) newDocumentRoot.appendChild(script);
     // Send an event
     const event = new CustomEvent('spa:updatePageContent', {
       detail: {
@@ -112,7 +122,7 @@ function removeBodyScripts(dom) {
     const element = document.createElement('script');
     portAttributesToElement(script, element);
     element.innerHTML = script.innerHTML;
-    dom.body.removeChild(script);
+    script.remove();
     newElements.push(element);
   }
   return newElements;
@@ -124,16 +134,27 @@ function portAttributesToElement(oldEl, newEl) {
   }
 }
 
-function getPersistentNodesFromDocument(dom) {
+function replacePersistentNodesOnDocument(dom) {
+  const persistentArea = document.createElement('div');
+  persistentArea.style.display = 'none';
+  document.body.appendChild(persistentArea);
   // Find persistent nodes
-  const persistentNodesFromDom = [...dom.querySelectorAll('[data-persistent]')].map(el => el.getAttribute('data-persistent'));
+  const domPersistentNodes = [...dom.querySelectorAll('[data-persistent]')];
+  const persistentNodesFromDom = domPersistentNodes.map(el => el.getAttribute('data-persistent'));
   const persistentNodesFromBody = [...document.body.querySelectorAll('[data-persistent]')];
   // Cross match the persistent nodes between current page and new page to find valid ones
-  const validPersistentNodes = persistentNodesFromBody.filter(el => {
-    return persistentNodesFromDom.includes(el.getAttribute('data-persistent'));
+  const persistentElements = [];
+  persistentNodesFromBody.forEach(el => {
+    const persistentAttribute = el.getAttribute('data-persistent');
+    if (!persistentNodesFromDom.includes(persistentAttribute)) return false;
+    dom.querySelector(`[data-persistent="${persistentAttribute}"]`).innerHTML = '';
+    persistentArea.appendChild(el);
+    persistentElements.push(el);
   });
-  // Clone
-  return validPersistentNodes.map(el => el.cloneNode(true));
+  return {
+    persistentElements,
+    persistentArea,
+  }
 }
 
 function replaceAttributesOnDocumentBody(dom) {

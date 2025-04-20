@@ -27,11 +27,13 @@ export default async function Base({
         <script defer src="/scripts/app.js"></script>
         {head}
       </head>
-      <body>
-        <script>
-          var FF_FOUC_FIX;
-        </script>
-        {children}
+      <body data-time={Date.now()}>
+        <div id="xpine-root">
+          <script>
+            var FF_FOUC_FIX;
+          </script>
+          {children}
+        </div>
       </body>
     </html>
   );

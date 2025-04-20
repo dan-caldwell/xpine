@@ -1,6 +1,10 @@
 import { context } from 'xpine';
 
-export default async function Navbar() {
+type NavbarProps = {
+  children?: any;
+}
+
+export default async function Navbar({ children }: NavbarProps) {
   const now = Date.now();
   const navbar = context.get('navbar');
   return (
@@ -19,6 +23,9 @@ export default async function Navbar() {
       <a href="/with-same-dir-wrapper" data-spa="true" data-testid="navbar-with-same-dir-wrapper"><span>With same dir wrapper</span></a>
       <a href="/my-path-a/my-path-b/1" data-spa="true" data-testid="navbar-path-c"><span>path c</span></a>
       <a href="/my-path-a2/my-path-b2/my-path-c2/2" data-spa="true" data-testid="navbar-path-d"><span>path d</span></a>
+      <div style="max-width: 50px; max-height: 50px;"><img src="/images/simplified-giraffe.svg" /></div>
+      <div style="max-width: 50px; max-height: 50px;"><img width="50" height="50" src="/images/8-cell-simple.gif" /></div>
+      {children}
     </div>
   );
 }
