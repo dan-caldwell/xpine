@@ -9,7 +9,7 @@ export const config = {
       description: 'The description',
     }
   },
-  wrapper({ req, children, data }: WrapperProps) {
+  wrapper({ req, children, data, path }: WrapperProps) {
     return (
       <Base
         title={data?.title || 'My awesome website'}
@@ -21,6 +21,7 @@ export const config = {
         </Navbar>
         <div data-testid="home-page-wrapper"></div>
         {children}
+        <h1 data-path={path} data-testid="url-path">Path: {path}</h1>
       </Base>
     )
   },

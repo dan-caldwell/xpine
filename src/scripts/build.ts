@@ -23,6 +23,7 @@ import { doctypeHTML, staticComment } from '../util/constants';
 import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types';
 import { context } from '../context';
 import ts from 'typescript';
+import { filePathToURLPath } from '../express';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -293,15 +294,16 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     }, path.dirname(builtComponentPath)) :
     path.dirname(builtComponentPath);
   if (typeof config?.staticPaths === 'boolean') {
+    const urlPath = filePathToURLPath(outputPath);
     // Build as-is
     try {
       const req = { params: {}, } as ServerRequest;
       const data = config?.data ? await config.data(req) : null;
-      const staticComponentOutput = await componentFn({ data, });
+      const staticComponentOutput = await componentFn({ data, path: urlPath });
       // Write file
       fs.writeFileSync(
         path.join(outputPath, './index.html'),
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput) + staticComment
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, path: urlPath }) : staticComponentOutput) + staticComment
       );
     } catch (err) {
       console.error(err);
@@ -316,14 +318,16 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
             ...(componentDynamicPaths?.length ? dynamicPath : {}),
           },
         } as ServerRequest;
-        const data = config?.data ? await config.data(req) : null;
-        const staticComponentOutput = await componentFn({ req, data, });
-        // Write file
         const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
+        const urlPath = filePathToURLPath(updatedOutDir);
+
+        const data = config?.data ? await config.data(req) : null;
+        const staticComponentOutput = await componentFn({ req, data, path: urlPath });
+        // Write file
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
           path.join(updatedOutDir, './index.html'),
-          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, }) : staticComponentOutput) + staticComment
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, path: urlPath }) : staticComponentOutput) + staticComment
         );
       } catch (err) {
         console.log('Could not build static component', component.path);

@@ -20,6 +20,7 @@ export type WrapperProps = {
   children: any;
   config: ConfigFile;
   data?: any;
+  path?: string;
 }
 
 export type ConfigFile = {
@@ -32,6 +33,7 @@ export type PageProps = {
   req: ServerRequest;
   res: Response;
   data: any;
+  path: string;
 }
 
 export type FileItem = {

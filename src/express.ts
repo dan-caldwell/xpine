@@ -95,6 +95,7 @@ export async function createRouter() {
       route,
     });
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
+      const urlPath = req?.route?.path || '/';
       try {
         const staticPath = routeHasStaticPath(formattedRouteItem, req.params);
         if (staticPath && !isDev) {
@@ -105,8 +106,8 @@ export async function createRouter() {
         if (componentFn && !isDev) {
           if (isJSX) {
             const data = config?.data ? await config.data(req) : null;
-            const originalResult = await componentFn({ req, res, data, });
-            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
+            const originalResult = await componentFn({ req, res, data, path: urlPath });
+            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, path: urlPath }) : originalResult;
             res.send(doctypeHTML + output);
           } else {
             await componentFn(req, res);
@@ -132,8 +133,8 @@ export async function createRouter() {
             };
           }
           const data = config?.data ? await config.data(req) : null;
-          const originalResult = await componentFnDev({ req, res, data, config });
-          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, }) : originalResult;
+          const originalResult = await componentFnDev({ req, res, data, config, path: urlPath, });
+          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, path: urlPath }) : originalResult;
           context.clear();
           res.send(doctypeHTML + output);
         } else {
@@ -208,4 +209,14 @@ export function routeHasStaticPath(route: string, params: { [key: string]: strin
   const outputPath = path.join(config.distPagesDir, routeToStaticPath);
   if (fs.existsSync(outputPath)) return outputPath;
   return false;
+}
+
+export function filePathToURLPath(pathName: string, isDist: boolean = true) {
+  const result = pathName.split(isDist ? config.distPagesDir : config.pagesDir).pop().replace(regex.indexFile, '').replace(regex.endsWithFileName, '');
+  if (result.endsWith('/')) {
+    const cleanedResult = result.slice(0, -1);
+    if (!cleanedResult) return '/';
+    return cleanedResult;
+  }
+  return result;
 }
