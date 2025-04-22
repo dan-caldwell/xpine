@@ -299,11 +299,11 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     try {
       const req = { params: {}, } as ServerRequest;
       const data = config?.data ? await config.data(req) : null;
-      const staticComponentOutput = await componentFn({ data, path: urlPath });
+      const staticComponentOutput = await componentFn({ data, routePath: urlPath });
       // Write file
       fs.writeFileSync(
         path.join(outputPath, './index.html'),
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, path: urlPath }) : staticComponentOutput) + staticComment
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath }) : staticComponentOutput) + staticComment
       );
     } catch (err) {
       console.error(err);
@@ -322,12 +322,12 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
         const urlPath = filePathToURLPath(updatedOutDir);
 
         const data = config?.data ? await config.data(req) : null;
-        const staticComponentOutput = await componentFn({ req, data, path: urlPath });
+        const staticComponentOutput = await componentFn({ req, data, routePath: urlPath });
         // Write file
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
           path.join(updatedOutDir, './index.html'),
-          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, path: urlPath }) : staticComponentOutput) + staticComment
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath }) : staticComponentOutput) + staticComment
         );
       } catch (err) {
         console.log('Could not build static component', component.path);

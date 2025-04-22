@@ -3,7 +3,7 @@ import Base from "../components/Base";
 import Navbar from "../components/Navbar";
 
 export default {
-  wrapper({ req, children, data, path }: WrapperProps) {
+  wrapper({ req, children, data, routePath }: WrapperProps) {
     return (
       <Base
         title={data?.title || 'Default title'}
@@ -13,7 +13,7 @@ export default {
         <Navbar />
         <div data-testid="base-config"></div>
         {children}
-        <h1 data-path={path} data-testid="url-path">Path: {path}</h1>
+        <h1 data-path={routePath} data-testid="url-path">Path: {routePath}</h1>
       </Base>
     )
   },
