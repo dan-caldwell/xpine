@@ -1,0 +1,1 @@
+- spa:updatePageURL should return all available information about the URL instead of just the href it's going to

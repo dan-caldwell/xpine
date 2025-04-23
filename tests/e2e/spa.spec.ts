@@ -45,3 +45,14 @@ test('path from inside page works', async ({ page }) => {
   const urlPath = await page.getByTestId('path-from-page').getAttribute('data-path');
   expect(urlPath).toEqual('/page-sending-context');
 });
+
+test('spa-update-page-url reflects active page in navbar', async ({ page }) => {
+  await page.goto(url);
+  const initialActivePage = await page.getByTestId('active-page-switch').getAttribute('data-active-page');
+  expect(initialActivePage).toEqual('/');
+  const link = page.getByTestId('page-sending-context');
+  await link.click();
+  await page.waitForURL('**/page-sending-context**');
+  const newActivePage = await page.getByTestId('active-page-switch').getAttribute('data-active-page');
+  expect(newActivePage).toEqual('/page-sending-context');
+});

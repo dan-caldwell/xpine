@@ -16,7 +16,7 @@ export const config = {
         description={data?.description}
         req={req}
       >
-        <Navbar>
+        <Navbar routePath={routePath}>
           <h1>Home page</h1>
         </Navbar>
         <div data-testid="home-page-wrapper"></div>

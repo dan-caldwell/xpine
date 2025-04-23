@@ -54,13 +54,13 @@ setupEnv also supports AWS secrets manager. Simply add SECRETS_NAME=your_aws_sec
   - enables cross-origin spa navigation requests (untested)
 
 #### Custom events
-  - spa:updatePageContent
+  - spa-update-page-content
     - sent when the page content has update
-  - spa:updatePageURL
+  - spa-update-page-url
     - send when the page URL has update
 
 #### Custom scripts for certain pages
 
 1. Add script to src/public/scripts/pages/your_script.ts
 2. Import script into page HTML (e.g. <script src="/scripts/pages/your_script.ts">)
-3. To unload event listeners, use `window.addEventListener('spa:updatePageURL', () => { remove event listeners here})` in the code
+3. To unload event listeners, use `window.addEventListener('spa-update-page-url', () => { remove event listeners here})` in the code

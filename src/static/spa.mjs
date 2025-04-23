@@ -11,7 +11,8 @@ async function updatePageOnLinkClick(e) {
   e.preventDefault();
   const targetHref = e?.target?.closest('a')?.getAttribute('href');
   if (!targetHref) return;
-  if (isExternalURL(targetHref) && !e?.target?.getAttribute('data-spa-crossorigin')) return;
+  const isExternal = isExternalURL(targetHref);
+  if (isExternal && !e?.target?.getAttribute('data-spa-crossorigin')) return;
   e.preventDefault();
   try {
     await getNewPageContent(targetHref);
@@ -24,9 +25,10 @@ async function updatePageOnLinkClick(e) {
       '',
       targetHref
     );
-    const event = new CustomEvent('spa:updatePageURL', {
+    const event = new CustomEvent('spa-update-page-url', {
       detail: {
         href: targetHref,
+        url: isExternal ? safeParseURL(targetHref) : safeParseURL(window.location.href),
       },
     });
     window.dispatchEvent(event);
@@ -66,9 +68,10 @@ async function getNewPageContent(href) {
     const newDocumentRoot = document.body.querySelector('#xpine-root');
     for (const script of newScripts) newDocumentRoot.appendChild(script);
     // Send an event
-    const event = new CustomEvent('spa:updatePageContent', {
+    const event = new CustomEvent('spa-update-page-content', {
       detail: {
         href,
+        url: safeParseURL(res.url),
       },
     });
     window.dispatchEvent(event);
@@ -189,6 +192,14 @@ function isExternalURL(url) {
     return computedURL?.origin !== window.location?.origin;
   } catch {
     return false; // Not a URL
+  }
+}
+
+function safeParseURL(url) {
+  try {
+    return new URL(url);
+  } catch (err) {
+    return {};
   }
 }
 

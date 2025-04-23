@@ -10,7 +10,7 @@ export default {
         description={data?.description}
         req={req}
       >
-        <Navbar />
+        <Navbar routePath={routePath} />
         <div data-testid="base-config"></div>
         {children}
         <h1 data-path={routePath} data-testid="url-path">Path: {routePath}</h1>
