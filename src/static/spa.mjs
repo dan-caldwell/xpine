@@ -15,8 +15,17 @@ async function updatePageOnLinkClick(e) {
   if (isExternal && !e?.target?.getAttribute('data-spa-crossorigin')) return;
   e.preventDefault();
   try {
+    if (targetHref === window.location.href) return;
+    const newURL = isExternal ? safeParseURL(targetHref) : safeParseURL(window.location.href);
+    const startEvent = new CustomEvent('spa-link-click', {
+      detail: {
+        state: 'start',
+        href: targetHref,
+        url: newURL,
+      }
+    });
+    window.dispatchEvent(startEvent);
     await getNewPageContent(targetHref);
-    if (targetHref === window.location.pathname) return;
     window.history.pushState(
       {
         type: 'link-click',
@@ -28,10 +37,18 @@ async function updatePageOnLinkClick(e) {
     const event = new CustomEvent('spa-update-page-url', {
       detail: {
         href: targetHref,
-        url: isExternal ? safeParseURL(targetHref) : safeParseURL(window.location.href),
+        url: newURL,
       },
     });
     window.dispatchEvent(event);
+    const endEvent = new CustomEvent('spa-link-click', {
+      detail: {
+        state: 'end',
+        href: targetHref,
+        url: newURL,
+      }
+    });
+    window.dispatchEvent(endEvent);
   } catch (err) {
     console.error(err);
   }

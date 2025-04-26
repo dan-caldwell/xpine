@@ -57,7 +57,10 @@ setupEnv also supports AWS secrets manager. Simply add SECRETS_NAME=your_aws_sec
   - spa-update-page-content
     - sent when the page content has update
   - spa-update-page-url
-    - send when the page URL has update
+    - sent when the page URL has update
+  - spa-link-click
+    - sent when link initially gets clicked and when link is done updating content
+    - the "state" value in the event detail will be "start" or "end"
 
 #### Custom scripts for certain pages
 
