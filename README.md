@@ -61,6 +61,18 @@ setupEnv also supports AWS secrets manager. Simply add SECRETS_NAME=your_aws_sec
   - spa-link-click
     - sent when link initially gets clicked and when link is done updating content
     - the "state" value in the event detail will be "start" or "end"
+  - breakpoint-change
+    - sent when a breakpoint is changed via your Tailwind css file's breakpoints in the @theme directive, e.g.
+      ```
+      @theme {
+        --breakpoint-xl: 1184px;
+        --breakpoint-sm: 640px;
+        --breakpoint-md: 768px;
+        --breakpoint-lg: 1024px;
+      }
+      ```
+    - this will send a custom event with the detail being the breakpoint, such as `{ breakpoint: 'xl' }`
+    - note this will only send an event based on the values of the breakpoints in your @theme configuration
 
 #### Custom scripts for certain pages
 

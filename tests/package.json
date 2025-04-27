@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "PORT=8888 LOCALHOST=1 xpine-dev",
     "dev:debug": "tsx ./src/server/run/dev.ts",
-    "build": "xpine-build --removePreviousBuild --disableTailwind",
-    "build:dev": "xpine-build --removePreviousBuild --isDev --disableTailwind",
+    "build": "xpine-build --removePreviousBuild",
+    "build:dev": "xpine-build --removePreviousBuild --isDev",
     "start": "PORT=8888 node ./dist/server/run/prod.js",
     "lint": "npx eslint",
     "fix": "npx eslint --fix",

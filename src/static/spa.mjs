@@ -220,6 +220,31 @@ function safeParseURL(url) {
   }
 }
 
+function handleBreakpointEvents() {
+  let lastSentBreakpoint = '';
+  let initial = true;
+  return function () {
+    const breakpoint = window.getComputedStyle(document.body, ':before')?.content?.replace(/[\'\"]/g, '') || '';
+    if (breakpoint !== lastSentBreakpoint) {
+      const event = new CustomEvent('breakpoint-change', {
+        detail: {
+          breakpoint,
+          initial,
+        },
+      });
+      window.dispatchEvent(event);
+      lastSentBreakpoint = breakpoint;
+      initial = false;
+    }
+  }
+}
+
+var breakpointEventsFunction = handleBreakpointEvents();
+
 window.addEventListener('DOMContentLoaded', replaceDocumentContentsWithLinkResponse);
 window.addEventListener('popstate', handleBackButton);
+window.addEventListener('resize', breakpointEventsFunction);
+
+// Call immediately
+breakpointEventsFunction();
 

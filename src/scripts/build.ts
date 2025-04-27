@@ -8,12 +8,8 @@ import {
   triggerXPineOnLoad
 } from '../build/typescript-builder';
 import { globSync } from 'glob';
-import postcss from 'postcss';
-// @ts-ignore
-import tailwindPostcss from '@tailwindcss/postcss';
 import { config } from '../util/get-config';
 import { getXPineDistDir } from '../util/paths';
-import postcssRemoveLayers from '../util/postcss/remove-layers';
 import transformTSXFiles from '../build/esbuild/transformTSXFiles';
 import addDotJS from '../build/esbuild/addDotJS';
 import getDataFiles from '../build/esbuild/getDataFiles';
@@ -24,6 +20,7 @@ import { ConfigFile, ServerRequest, FileItem, ComponentData } from '../../types'
 import { context } from '../context';
 import ts from 'typescript';
 import { filePathToURLPath } from '../express';
+import { buildCSS } from '../build/css';
 
 // Extensions to look for in the bundle
 const extensions = ['.ts', '.tsx'];
@@ -202,20 +199,7 @@ async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: an
   return config.alpineDataPath;
 }
 
-export async function buildCSS(disableTailwind?: boolean) {
-  const cssFiles = globSync(config.srcDir + '/**/*.css');
-  for (const file of cssFiles) {
-    const fileContents = fs.readFileSync(file, 'utf-8');
-    const result = disableTailwind ?
-      fileContents :
-      await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(fileContents, { from: file, });
-    // Write to dist folder
-    const newPath = file.replace(config.srcDir, config.distDir);
-    fs.ensureFileSync(newPath);
-    fs.writeFileSync(newPath, result.css);
-  }
-  logSize(config.distPublicDir, 'css');
-}
+
 
 // We need to symlink the non CSS or JS files from the src/public folder into the dist folder
 export async function buildPublicFolderSymlinks() {
