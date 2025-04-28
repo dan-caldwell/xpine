@@ -224,7 +224,7 @@ function handleBreakpointEvents() {
   let lastSentBreakpoint = '';
   let initial = true;
   return function () {
-    const breakpoint = window.getComputedStyle(document.body, ':before')?.content?.replace(/[\'\"]/g, '') || '';
+    const breakpoint = window.getComputedStyle(document.documentElement).getPropertyValue('--active-breakpoint')?.replace(/[\'\"]/g, '')?.trim() || '';
     if (breakpoint !== lastSentBreakpoint) {
       const event = new CustomEvent('breakpoint-change', {
         detail: {

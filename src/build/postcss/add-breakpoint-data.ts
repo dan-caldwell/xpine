@@ -28,8 +28,8 @@ const plugin: PluginCreator<plugin.Options> = (opts = {}) => {
     },
     OnceExit(root) {
       root.append([
-        `body:before {`,
-        `content: "default"; display: none; visibility: hidden;`,
+        `:root {`,
+        `--active-breakpoint: "default";`,
         `}`
       ].join(''))
       const nodeValuesMapped = nodeValues
@@ -39,8 +39,8 @@ const plugin: PluginCreator<plugin.Options> = (opts = {}) => {
         }).map(({ breakpoint, value }) => {
           return [
             `@media (min-width: ${value}) {`,
-            `body:before {`,
-            `content: "${breakpoint}";`,
+            `:root {`,
+            `--active-breakpoint: "${breakpoint}";`,
             `}`,
             `}`
           ].join('');
