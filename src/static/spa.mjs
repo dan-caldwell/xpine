@@ -230,6 +230,7 @@ function handleBreakpointEvents() {
         detail: {
           breakpoint,
           initial,
+          previous: lastSentBreakpoint,
         },
       });
       window.dispatchEvent(event);
