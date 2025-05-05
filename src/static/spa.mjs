@@ -188,14 +188,20 @@ function replaceAttributesOnDocumentBody(dom) {
 }
 
 async function handleBackButton() {
-  if (window.xpineIgnorePopState) return;
-  await getNewPageContent(window.history.state?.targetHref || window.location.href);
-  const event = new CustomEvent('spa-popstate', {
+  const initEvent = new CustomEvent('spa-popstate-initiated', {
     detail: {
       href: window.history.state?.targetHref || window.location.href,
     },
   });
-  window.dispatchEvent(event);
+  window.dispatchEvent(initEvent);
+  if (window.xpineIgnorePopState) return;
+  await getNewPageContent(window.history.state?.targetHref || window.location.href);
+  const updatedEvent = new CustomEvent('spa-popstate-updated', {
+    detail: {
+      href: window.history.state?.targetHref || window.location.href,
+    },
+  });
+  window.dispatchEvent(updatedEvent);
 }
 
 function isRelativeURL(url) {
