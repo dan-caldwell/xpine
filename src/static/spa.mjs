@@ -29,8 +29,8 @@ async function updatePageOnLinkClick(e) {
     window.history.pushState(
       {
         type: 'link-click',
-        href: targetHref,
-        url: newURL,
+        hrefTarget: targetHref,
+        href: newURL?.href,
       },
       '',
       targetHref
