@@ -23,10 +23,16 @@ export type WrapperProps = {
   routePath?: string;
 }
 
+export type ComponentPath = {
+  route: string;
+  component: (props: WrapperProps) => Promise<any>;
+}
+
 export type ConfigFile = {
   staticPaths?: boolean | (() => Promise<{ [key: string]: string }[]>);
   wrapper?: (props: WrapperProps) => Promise<any>;
   data?: (req: ServerRequest) => Promise<any>;
+  componentPaths?: ComponentPath[];
 }
 
 export type PageProps = {

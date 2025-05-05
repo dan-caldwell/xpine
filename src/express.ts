@@ -106,8 +106,19 @@ export async function createRouter() {
         if (componentFn && !isDev) {
           if (isJSX) {
             const data = config?.data ? await config.data(req) : null;
-            const originalResult = await componentFn({ req, res, data, routePath: urlPath });
-            const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, routePath: urlPath }) : originalResult;
+            const originalResult = await componentFn({
+              req,
+              res,
+              data,
+              routePath: urlPath,
+            });
+            const output = config?.wrapper ? await config.wrapper({
+              req,
+              children: originalResult,
+              config,
+              data,
+              routePath: urlPath,
+            }) : originalResult;
             res.send(doctypeHTML + output);
           } else {
             await componentFn(req, res);
@@ -133,8 +144,20 @@ export async function createRouter() {
             };
           }
           const data = config?.data ? await config.data(req) : null;
-          const originalResult = await componentFnDev({ req, res, data, config, routePath: urlPath, });
-          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, routePath: urlPath }) : originalResult;
+          const originalResult = await componentFnDev({
+            req,
+            res,
+            data,
+            config,
+            routePath: urlPath,
+          });
+          const output = config?.wrapper ? await config.wrapper({
+            req,
+            children: originalResult,
+            config,
+            data,
+            routePath: urlPath
+          }) : originalResult;
           context.clear();
           res.send(doctypeHTML + output);
         } else {
