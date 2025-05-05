@@ -188,17 +188,20 @@ function replaceAttributesOnDocumentBody(dom) {
 }
 
 async function handleBackButton() {
+  const url = window.history.state?.targetHref || window.location.href;
   const initEvent = new CustomEvent('spa-popstate-initiated', {
     detail: {
-      href: window.history.state?.targetHref || window.location.href,
+      href: url,
+      url: safeParseURL(url),
     },
   });
   window.dispatchEvent(initEvent);
   if (window.xpineIgnorePopState) return;
-  await getNewPageContent(window.history.state?.targetHref || window.location.href);
+  await getNewPageContent(url);
   const updatedEvent = new CustomEvent('spa-popstate-updated', {
     detail: {
-      href: window.history.state?.targetHref || window.location.href,
+      href: url,
+      url: safeParseURL(url),
     },
   });
   window.dispatchEvent(updatedEvent);
