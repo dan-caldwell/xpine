@@ -29,7 +29,8 @@ async function updatePageOnLinkClick(e) {
     window.history.pushState(
       {
         type: 'link-click',
-        targetHref,
+        href: targetHref,
+        url: newURL,
       },
       '',
       targetHref
@@ -188,7 +189,7 @@ function replaceAttributesOnDocumentBody(dom) {
 }
 
 async function handleBackButton() {
-  const url = window.history.state?.targetHref || window.location.href;
+  const url = window.history.state?.url?.href || window.location.href;
   const initEvent = new CustomEvent('spa-popstate-initiated', {
     detail: {
       href: url,
