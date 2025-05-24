@@ -71,3 +71,16 @@ test('inner static path override', async ({ page }) => {
   const nonStaticBody = (await nonStaticResult.body()).toString();
   expect(nonStaticBody).not.toContain('<!-- static -->');
 });
+
+test('dynamic path with static catch all', async ({ page }) => {
+  const result = await page.goto(url + '/catch-all-route/page/123/456/789');
+  const body = (await result.body()).toString();
+  expect(body).toContain('<!-- static -->');
+  expect(fs.existsSync(path.join(config.distDir, './pages/catch-all-route/page/123/456/789/index.html'))).toEqual(true);
+});
+
+test('catch all api endpoint', async ({ page }) => {
+  const result = await page.goto(url + '/catch-all-route/api/my-awesome-param');
+  const body = (await result.body()).toString();
+  expect(body).toEqual('my-awesome-param');
+});

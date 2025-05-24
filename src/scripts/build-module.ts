@@ -31,5 +31,5 @@ export async function buildXPine() {
     minify: false,
     plugins: [],
   });
-  console.log('Built xpine', Date.now());
+  console.info('Built xpine', Date.now());
 }

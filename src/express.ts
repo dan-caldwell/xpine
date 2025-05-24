@@ -65,6 +65,9 @@ export async function createRouter() {
         formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
       }
     }
+    // Handle catch all routes
+    const hasCatchAll = formattedRouteItem.match(regex.catchAllRoute);
+    if (hasCatchAll) formattedRouteItem = formattedRouteItem.replace(regex.catchAllRoute, '/*');
 
     // Import route
     const componentImport = await import(route.path);
@@ -94,6 +97,7 @@ export async function createRouter() {
       foundMethod,
       route,
     });
+
     router[foundMethod || 'get'](formattedRouteItem, async (req: Request, res: Response) => {
       const urlPath = req?.route?.path || '/';
       try {
@@ -203,6 +207,8 @@ export function routeHasStaticPath(route: string, params: { [key: string]: strin
   let routeToStaticPath = route;
   for (const [key, value] of paramEntries) {
     routeToStaticPath = routeToStaticPath.replace(`:${key}`, value);
+    // Handle catch all routes
+    if (key === '0') routeToStaticPath = routeToStaticPath.replace(/\/\*/g, `/${value}`);
   }
   routeToStaticPath += '/index.html';
   // Check if path exists

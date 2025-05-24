@@ -43,6 +43,22 @@ setupEnv also supports AWS secrets manager. Simply add SECRETS_NAME=your_aws_sec
 
 `import { createXPineRouter } from 'xpine';`
 
+- Catch all routes
+  - You can create catch all routes by naming the file _all_.(jsx|tsx|js|ts)
+  - You can make static catch all route pages by using the param `0` in the staticPaths config function:
+    ```
+      export const config = {
+        staticPaths() {
+          return [
+            {
+              0: 'hello/world',
+            }
+          ]
+        },
+      }
+    ```
+  - You can get the route param in your function with req.params[0], such as how express handles catch all routes
+
 
 ### SPA interactivity
 

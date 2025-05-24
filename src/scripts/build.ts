@@ -260,12 +260,18 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
   if (isDynamicRoute) {
     componentFileName = component.path
       .split('/')
-      .filter((dir: string) => dir.match(regex.isDynamicRoute))
+      .filter((dir: string) => {
+        return dir.match(regex.isDynamicRoute) || dir.match(regex.catchAllRouteFilePath)
+      })
+      .map(dir => {
+        const matchesCatchAll = dir.match(regex.catchAllRouteFilePath);
+        if (matchesCatchAll) return dir.replace(regex.catchAllRouteFileName, '[0]');
+        return dir;
+      })
       .join('/')
       .replace(regex.endsWithJSX, '')
       .replace(regex.endsWithTSX, '');
   }
-
   const componentDynamicPaths = getComponentDynamicPaths(componentFileName);
   const componentFn = componentImport.default;
 
@@ -291,7 +297,7 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
       );
     } catch (err) {
       console.error(err);
-      console.log('Could not build static component', component.path);
+      console.error('Could not build static component', component.path);
     }
   } else if (typeof config?.staticPaths === 'function') {
     const dynamicPaths = await config.staticPaths();
@@ -314,15 +320,15 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
           doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath }) : staticComponentOutput) + staticComment
         );
       } catch (err) {
-        console.log('Could not build static component', component.path);
         console.error(err);
+        console.error('Could not build static component', component.path);
       }
     }
   }
 }
 
 export function getComponentDynamicPaths(componentPath: string): string[] {
-  const matches = [...componentPath.matchAll(regex.dynamicRoutes)];
+  const matches = [...componentPath.matchAll(regex.dynamicRoutes)].concat([...componentPath.matchAll(regex.catchAllRoute)]);
   if (!matches?.length) return null;
   const output = [];
   for (const match of matches) {

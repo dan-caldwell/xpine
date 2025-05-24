@@ -8,4 +8,7 @@ export default {
   endsWithJSX: /\.jsx$/,
   endsWithFileName: /\.(html|tsx|jsx|js|ts)$/,
   indexFile: /index\.(html|tsx|jsx|js|ts)$/g,
+  catchAllRoute: /\/_all_$/g,
+  catchAllRouteFilePath: /_all_\.(html|tsx|jsx|js|ts)$/g,
+  catchAllRouteFileName: /_all_/g,
 };

@@ -158,7 +158,7 @@ export function createStaticFile(pathName: string, source: ts.SourceFile) {
       const text = child.getText(source);
       const cleanedText = text.replace(/["';]/g, '');
       if (cleanedText === 'xpine-static') {
-        console.log('make this file static', pathName);
+        console.info('make this file static', pathName);
       }
     }
   });
@@ -188,7 +188,7 @@ export function printRecursiveFrom(
   const indentation = '-'.repeat(indentLevel);
   const syntaxKind = ts.SyntaxKind[node.kind];
   const nodeText = node.getText(sourceFile);
-  console.log(`${indentation}${syntaxKind}: ${nodeText}`);
+  console.info(`${indentation}${syntaxKind}: ${nodeText}`);
 
   node.forEachChild(child =>
     printRecursiveFrom(child, indentLevel + 1, sourceFile)
