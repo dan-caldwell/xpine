@@ -261,7 +261,7 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     componentFileName = component.path
       .split('/')
       .filter((dir: string) => {
-        return dir.match(regex.isDynamicRoute) || dir.match(regex.catchAllRouteFilePath)
+        return dir.match(regex.isDynamicRoute) || dir.match(regex.catchAllRouteFilePath);
       })
       .map(dir => {
         const matchesCatchAll = dir.match(regex.catchAllRouteFilePath);
@@ -289,11 +289,11 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     try {
       const req = { params: {}, } as ServerRequest;
       const data = config?.data ? await config.data(req) : null;
-      const staticComponentOutput = await componentFn({ data, routePath: urlPath });
+      const staticComponentOutput = await componentFn({ data, routePath: urlPath, });
       // Write file
       fs.writeFileSync(
         path.join(outputPath, './index.html'),
-        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath }) : staticComponentOutput) + staticComment
+        doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath, }) : staticComponentOutput) + staticComment
       );
     } catch (err) {
       console.error(err);
@@ -312,12 +312,12 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
         const urlPath = filePathToURLPath(updatedOutDir);
 
         const data = config?.data ? await config.data(req) : null;
-        const staticComponentOutput = await componentFn({ req, data, routePath: urlPath });
+        const staticComponentOutput = await componentFn({ req, data, routePath: urlPath, });
         // Write file
         fs.ensureDirSync(updatedOutDir);
         fs.writeFileSync(
           path.join(updatedOutDir, './index.html'),
-          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath }) : staticComponentOutput) + staticComment
+          doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath, }) : staticComponentOutput) + staticComment
         );
       } catch (err) {
         console.error(err);
@@ -348,7 +348,7 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
   const onLoadFileResult: OnLoadFileResult = {
     imports: '',
     fn: '',
-  }
+  };
   for (const component of componentData) {
     if (component.contents.includes('xpineOnLoad')) {
       onLoadFiles.push({
@@ -359,7 +359,7 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
   }
   // Sort alphabetically to ensure builds are always the same
   onLoadFiles.sort((a, b) => {
-    return a.path.localeCompare(b.path)
+    return a.path.localeCompare(b.path);
   });
   // Import each file and add to dist
   for (const file of onLoadFiles) {
@@ -392,7 +392,7 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
     jsx: 'transform',
     minify: !isDev,
     plugins: [
-      addDotJS(allPackages, extensions, isDev),
+      addDotJS(allPackages, extensions, isDev)
     ],
   });
 }

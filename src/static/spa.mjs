@@ -22,7 +22,7 @@ async function updatePageOnLinkClick(e) {
         state: 'start',
         href: targetHref,
         url: newURL,
-      }
+      },
     });
     window.dispatchEvent(startEvent);
     await getNewPageContent(targetHref);
@@ -47,7 +47,7 @@ async function updatePageOnLinkClick(e) {
         state: 'end',
         href: targetHref,
         url: newURL,
-      }
+      },
     });
     window.dispatchEvent(endEvent);
   } catch (err) {
@@ -63,7 +63,7 @@ async function getNewPageContent(href) {
     const dom = parser.parseFromString(text, 'text/html');
     diffHead(dom);
     const newScripts = removeBodyScripts(dom);
-    const { persistentArea, persistentElements } = replacePersistentNodesOnDocument(dom);
+    const { persistentArea, persistentElements, } = replacePersistentNodesOnDocument(dom);
     // Here we need to work around the persistent nodes in order to not have to reload images every time
     const documentRoot = document.body.querySelector('#xpine-root');
     const domRoot = dom?.body?.querySelector('#xpine-root');
@@ -175,7 +175,7 @@ function replacePersistentNodesOnDocument(dom) {
   return {
     persistentElements,
     persistentArea,
-  }
+  };
 }
 
 function replaceAttributesOnDocumentBody(dom) {
@@ -237,11 +237,15 @@ function safeParseURL(url) {
   }
 }
 
+function getCurrentBreakpoint() {
+  return window.getComputedStyle(document.documentElement).getPropertyValue('--active-breakpoint')?.replace(/[\'\"]/g, '')?.trim() || '';
+}
+
 function handleBreakpointEvents() {
   let lastSentBreakpoint = '';
   let initial = true;
   return function () {
-    const breakpoint = window.getComputedStyle(document.documentElement).getPropertyValue('--active-breakpoint')?.replace(/[\'\"]/g, '')?.trim() || '';
+    const breakpoint = getCurrentBreakpoint();
     if (breakpoint !== lastSentBreakpoint) {
       const event = new CustomEvent('breakpoint-change', {
         detail: {
@@ -254,7 +258,7 @@ function handleBreakpointEvents() {
       lastSentBreakpoint = breakpoint;
       initial = false;
     }
-  }
+  };
 }
 
 var breakpointEventsFunction = handleBreakpointEvents();

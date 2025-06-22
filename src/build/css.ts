@@ -1,8 +1,8 @@
-import { globSync } from "glob";
-import { config } from "../util/get-config";
+import { globSync } from 'glob';
+import { config } from '../util/get-config';
 import fs from 'fs-extra';
-import postcss from "postcss";
-import { logSize } from "../scripts/build";
+import postcss from 'postcss';
+import { logSize } from '../scripts/build';
 import postcssRemoveLayers from './postcss/remove-layers';
 import postcssAddBreakpointData from './postcss/add-breakpoint-data';
 // @ts-ignore
@@ -15,7 +15,7 @@ export async function buildCSS(disableTailwind?: boolean) {
     let result = fileContents;
     if (!disableTailwind) {
       // Add the breakpoint data before processing Tailwind
-      result = await postcss([postcssAddBreakpointData()]).process(fileContents, { from: file });
+      result = await postcss([postcssAddBreakpointData()]).process(fileContents, { from: file, });
       result = await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(result.css, { from: file, });
     }
     // Write to dist folder

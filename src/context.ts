@@ -69,8 +69,8 @@ export function createContext(value: ContextType<any>): State<any> {
         }
       });
       arrayQueue = {};
-    }
-  }
+    },
+  };
 }
 
 export const context = createContext({});
@@ -87,5 +87,5 @@ export function addToContextArray(newValue: any, position?: number) {
       return currentValue.toSpliced(position, 0, newValue);
     }
     return [...currentValue, newValue];
-  }
+  };
 }

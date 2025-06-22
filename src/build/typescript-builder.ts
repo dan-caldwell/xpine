@@ -133,7 +133,7 @@ export function removeClientScriptInTSXFile(pathName: string, source: ts.SourceF
     // Hoist the client imports to above the <script /> tag
     if (child.kind === ts.SyntaxKind.ImportDeclaration && child.pos >= clientDataStart) {
       const text = child.getText(source);
-      clientImportsToReplace.push(...getImportsToAbsolutePaths(child, source, pathName))
+      clientImportsToReplace.push(...getImportsToAbsolutePaths(child, source, pathName));
       clientImportsToHoist.push(text);
     }
   });
@@ -211,7 +211,7 @@ export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, 
       value.imports = importText + '\n' + value.imports;
     }
     if ([ts.SyntaxKind.FirstStatement, ts.SyntaxKind.FunctionDeclaration].includes(child.kind)) {
-      let text = child.getText(source);
+      const text = child.getText(source);
       if (text.includes('xpineOnLoad')) {
         // @ts-ignore
         const body = (child?.body?.getText(source) || '');

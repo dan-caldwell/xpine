@@ -38,9 +38,11 @@ export default async function Navbar({ children, routePath }: NavbarProps) {
         <a href="/my-path-a/my-path-b/1" data-spa="true" data-testid="navbar-path-c"><span>path c</span></a>
         <a href="/my-path-a2/my-path-b2/my-path-c2/2" data-spa="true" data-testid="navbar-path-d"><span>path d</span></a>
         <a href="/catch-all-route/page/123/456/789" data-spa="true" data-testid="navbar-catch-all-static"><span>catch all static</span></a>
+        <a href="/adwdwf1231wdw" data-spa="true" data-testid="navbar-404"><span>404 page</span></a>
       </div>
       <div style="max-width: 50px; max-height: 50px;"><img src="/images/simplified-giraffe.svg" /></div>
       <div style="max-width: 50px; max-height: 50px;"><img width="50" height="50" src="/images/8-cell-simple.gif" /></div>
+      <div data-testid="global-navbar">Global navbar</div>
       {children}
     </div>
   );
