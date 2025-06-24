@@ -85,6 +85,12 @@ test('catch all api endpoint', async ({ page }) => {
   expect(body).toEqual('my-awesome-param');
 });
 
+test('regular API endpoint', async ({ page }) => {
+  const result = await page.goto(url + '/api/my-cool-endpoint');
+  const body = (await result.body()).toString();
+  expect(body).toEqual('my-endpoint');
+});
+
 test('404 page uses config', async ({ page }) => {
   await page.goto(url + '/my-cool-404-page');
   await expect(page.getByTestId('404-page')).toHaveText('404 page not found');

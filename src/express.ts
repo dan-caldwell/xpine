@@ -11,7 +11,6 @@ import { getCompleteConfig, getConfigFiles } from './util/config-file';
 import { doctypeHTML } from './util/constants';
 import EventEmitter from 'events';
 import { context } from './context';
-import { config as xpineConfig } from './util/get-config';
 import { triggerXPineOnLoad } from './build/typescript-builder';
 
 const methods = ['get', 'post', 'put', 'patch', 'delete'];
@@ -52,7 +51,7 @@ async function createRouteFunction(route: RouteMap, configFiles: string[]) {
   const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
   // Configure result,methods for the route
   const slugRoute = route.route.replace(/[ ]/g, '');
-  const foundMethod = methods.find(method => slugRoute.endsWith(`.${method}`));
+  const foundMethod = methods.find(method => slugRoute.toUpperCase().endsWith(`.${method.toUpperCase()}`));
   const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
   let formattedRouteItem = slugRoute;
   if (foundMethod) formattedRouteItem = formattedRouteItem.split('.').shift();
