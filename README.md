@@ -13,7 +13,6 @@ XPine uses page based routing. Render an HTML page using JSX components, for exa
 ```
 import { WrapperProps } from 'xpine/dist/types';
 import Base from '../components/Base';
-import Navbar from '../components/Navbar';
 
 export const config = {
   data() {
@@ -296,12 +295,59 @@ export default async function startServer() {
 }
 ```
 
+Add a directory in `/src/server` called `run`, and create two files: `/src/server/dev.ts` and `/src/server/prod.ts`.
+
+`dev.ts` should look like this:
+
+```
+import { runDevServer } from 'xpine';
+
+runDevServer();
+```
+
+and can be run with an npm command like this in your package.json scripts: `"dev": "PORT=8888 LOCALHOST=1 xpine-dev"`.
+
+The `prod.ts` should look like this:
+
+```
+import startServer from '../app';
+
+await startServer();
+```
+
+and can be run with an npm command in your package.json scripts like this, after the app has been built with `xpine-build`:
+
+`"start": "PORT=8888 node ./dist/server/run/prod.js"`
+
 ### xpine.config.mjs file
 
-Add an xpine.config.mjs file to your root directory. This is used primarily for configuring file paths
+Add an xpine.config.mjs file to your root directory. This is used primarily for configuring/changing file paths. Configs can be imported with `import { config } from "xpine"`.
 
 ```
 export default {}
+```
+
+These are the following default paths:
+
+```
+rootDir: process.cwd
+srcDir: rootDir + ./src
+distDir: rootDir + ./dist
+packageJsonPath: rootDir + ./package.json
+distPublicDir: distDir + ./public
+distPublicScriptsDir: distPublicDir + ./scripts
+distTempFolder: distDir + ./temp
+clientJSBundlePath: distPublicScriptsDir + ./app.js
+alpineDataPath: distTempFolder + ./alpine-data.ts
+serverDistDir: distDir + ./server
+serverDistAppPath: serverDistDir + ./app.js
+pagesDir: srcDir + ./pages
+distPagesDir: distDir + ./pages
+publicDir: srcDir + ./public
+serverDir: srcDir + ./server
+runDir: serverDir + ./run
+serverAppPath: serverDir + ./app.ts
+globalCSSFile: publicDir + ./styles/global.css
 ```
 
 ### SPA interactivity
