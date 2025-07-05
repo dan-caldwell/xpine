@@ -70,7 +70,7 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
 
   // Filter out client side files and files that aren't of the allowed extensions
   const backendFiles = files
-    .filter((file) => extensions.find(ext => file.endsWith(ext)))
+    .filter((file) => extensions?.find(ext => file.endsWith(ext)))
     .filter((file) => !file.startsWith(config.publicDir));
 
   fs.ensureDirSync(config.distDir);
@@ -223,7 +223,7 @@ export async function buildPublicFolderSymlinks() {
 export async function logSize(pathName: string, type: 'app' | 'client' | 'css', validExtensions = ['.js', '.css']) {
   const files = globSync(pathName + '/**/*' + (type === 'css' ? '.css' : ''));
   const fileSizes = files.map((file) => {
-    if (!validExtensions.find(ext => file.endsWith(ext))) return false;
+    if (!validExtensions?.find(ext => file.endsWith(ext))) return false;
     return {
       file,
       size: (fs.statSync(file).size) / (1024 * 1000),

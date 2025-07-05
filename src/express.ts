@@ -78,14 +78,12 @@ async function createRouteFunction(route: RouteMap, configFiles: string[]) {
   // Config
   let config: ConfigFile = {};
   const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
-  if (!isDev) {
-    config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
-    if (componentImport?.config) {
-      config = {
-        ...config,
-        ...componentImport.config,
-      };
-    }
+  config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
+  if (componentImport?.config) {
+    config = {
+      ...config,
+      ...componentImport.config,
+    };
   }
 
   async function routeFn(req: Request, res: Response) {
@@ -144,6 +142,7 @@ async function createRouteFunction(route: RouteMap, configFiles: string[]) {
     formattedRouteItem,
     foundMethod,
     route,
+    config,
     routeFn,
   };
 }
@@ -159,9 +158,13 @@ export async function createRouter() {
 
   for (const route of routeMap) {
     try {
-      const { formattedRouteItem, foundMethod, routeFn, } = await createRouteFunction(route, configFiles);
+      const { formattedRouteItem, foundMethod, config, routeFn, } = await createRouteFunction(route, configFiles);
 
-      router[foundMethod || 'get'](formattedRouteItem, routeFn);
+      if (config?.routeMiddleware) {
+        router[foundMethod || 'get'](formattedRouteItem, config.routeMiddleware, routeFn);
+      } else {
+        router[foundMethod || 'get'](formattedRouteItem, routeFn);
+      }
 
       // Push to the route results array
       routeResults.push({

@@ -29,7 +29,9 @@ export async function runDevServer() {
     ignored: (pathName) => pathName.endsWith('.map') || pathName.startsWith(path.join(config.serverDir, './prisma')),
   });
   watcher.on('all', async (event, path) => {
-    const shouldReloadServer = (path.startsWith(config.serverDir) && !path.startsWith(config.runDir)) ||
+    const isRegularExpressRoute = path.startsWith(config.pagesDir) && (path.endsWith('.ts') || path.endsWith('.js'));
+    const isServerDir = path.startsWith(config.serverDir) && !path.startsWith(config.runDir);
+    const shouldReloadServer = isServerDir || isRegularExpressRoute ||
       ['add', 'unlink'].includes(event) && path.startsWith(config.pagesDir);
     if (shouldReloadServer) {
       // We modified files in the server, restart the server

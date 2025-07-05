@@ -155,6 +155,19 @@ You can create catch all routes by naming the file \_all\_.(jsx|tsx|js|ts). You 
 
 You can get the route param in your function with req.params[0], such as how express handles catch all routes.
 
+### Route specific middleware
+
+If you need route specific middleware, e.g. for file uploads, you can specify a `routeMiddleware` function in a config variable in the endpoint file:
+
+```
+export const config = {
+  routeMiddleware(req, res, next) {
+    console.log('route middleware');
+    next();
+  }
+}
+```
+
 ### Static Site Generation
 
 Generate path specific static pages by specifying in the config of either the page's file, such as `/src/pages/about.tsx` with a config export:

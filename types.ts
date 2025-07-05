@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import ts from 'typescript';
 
 export type XPineConfig = {
@@ -27,6 +27,7 @@ export type ConfigFile = {
   staticPaths?: boolean | (() => Promise<{ [key: string]: string }[]>);
   wrapper?: (props: WrapperProps) => Promise<any>;
   data?: (req: ServerRequest) => Promise<any>;
+  routeMiddleware?: (req: ServerRequest, res: Response, next: NextFunction) => void;
 }
 
 export type PageProps = {
