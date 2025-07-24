@@ -6,3 +6,4 @@ export * from './src/scripts/build';
 export * from './src/auth';
 export * from './src/util/html';
 export * from './src/context';
+export * from './src/util/web';
