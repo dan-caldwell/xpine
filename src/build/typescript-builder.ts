@@ -164,7 +164,14 @@ export function createStaticFile(pathName: string, source: ts.SourceFile) {
   });
 }
 
-export function getImportsToAbsolutePaths(child: ts.Node, source: ts.SourceFile, pathName: string) {
+export function pathExistsAsIndex(pathName: string) {
+  return fs.existsSync(path.join(pathName, './index.js')) ||
+    fs.existsSync(path.join(pathName, './index.ts')) ||
+    fs.existsSync(path.join(pathName, './index.jsx')) ||
+    fs.existsSync(path.join(pathName, './index.tsx'));
+}
+
+export function getImportsToAbsolutePaths(child: ts.Node, source: ts.SourceFile, pathName: string, convertPathsToJS: boolean = false) {
   const output = [];
   child.forEachChild(child => {
     if (child.kind === ts.SyntaxKind.StringLiteral) {
@@ -173,9 +180,17 @@ export function getImportsToAbsolutePaths(child: ts.Node, source: ts.SourceFile,
       const importPath = text.replace(/[\"\']/g, '');
       const isRelativeImport = importPath.startsWith('.') || importPath.startsWith('/');
       if (!isRelativeImport) return;
+      let result = path.join(path.dirname(pathName), importPath);
+      if (convertPathsToJS) {
+        if (pathExistsAsIndex(result)) {
+          result = path.join(result, './index.js');
+        } else {
+          result += '.js';
+        }
+      }
       output.push({
         old: importPath,
-        new: path.join(path.dirname(pathName), importPath),
+        new: result,
       });
     }
   });
@@ -195,7 +210,15 @@ export function printRecursiveFrom(
   );
 }
 
-export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, onLoadFileResult: OnLoadFileResult) {
+type GetXpineOnLoadFunctionOptions = {
+  convertPathsToJS?: boolean;
+}
+
+export function getXpineOnLoadFunction(
+  pathName: string,
+  source: ts.SourceFile,
+  options?: GetXpineOnLoadFunctionOptions,
+) {
   const value = {
     imports: '',
     fn: '',
@@ -204,7 +227,7 @@ export function getXpineOnLoadFunction(pathName: string, source: ts.SourceFile, 
     if (child.kind == ts.SyntaxKind.ImportDeclaration) {
       let importText = child.getText(source);
       // Adjust import locations
-      const importOutput = getImportsToAbsolutePaths(child, source, pathName);
+      const importOutput = getImportsToAbsolutePaths(child, source, pathName, options?.convertPathsToJS);
       for (const importItem of importOutput) {
         importText = importText.replace(importItem.old, importItem.new);
       }

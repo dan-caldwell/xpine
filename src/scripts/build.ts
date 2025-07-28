@@ -363,7 +363,7 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
   });
   // Import each file and add to dist
   for (const file of onLoadFiles) {
-    const result = getXpineOnLoadFunction(file.path, file.source, onLoadFileResult);
+    const result = getXpineOnLoadFunction(file.path, file.source, { convertPathsToJS: true });
     onLoadFileResult.fn += result.fn;
     onLoadFileResult.imports += result.imports;
   }

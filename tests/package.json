@@ -32,6 +32,7 @@
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
     "dotenv-cli": "^8.0.0",
+    "emoji-unicode": "^2.0.2",
     "esbuild": "^0.24.2",
     "escape-html": "^1.0.3",
     "express": "^4.21.2",
