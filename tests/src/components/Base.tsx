@@ -7,6 +7,7 @@ type BaseProps = {
   description?: string;
   req?: ServerRequest;
   children?: JsxElement;
+  bundleID?: string;
 }
 
 export default async function Base({
@@ -14,6 +15,7 @@ export default async function Base({
   title,
   description,
   children,
+  bundleID,
 }: BaseProps) {
   return (
     <html lang="en">
@@ -24,7 +26,7 @@ export default async function Base({
         <meta name="description" content={description || `${title} page`} />
         <title>{title || 'My Website'}</title>
         <link rel="stylesheet" href="/styles/global.css" />
-        <script defer src="/scripts/app.js"></script>
+        <script defer src={`/scripts/${bundleID || 'app'}.js`}></script>
         {head}
       </head>
       <body data-time={Date.now()}>

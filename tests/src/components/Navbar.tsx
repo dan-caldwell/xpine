@@ -20,7 +20,7 @@ export default async function Navbar({ children, routePath }: NavbarProps) {
         'x-on:breakpoint-change.window': 'handleBreakpointUpdate',
       }}
     >
-      <div x-text="`Breakpoint: ${currentBreakpoint}`" class="bg-orange-200"></div>
+      <div x-text="`Breakpoint: ${currentBreakpoint}`" class="bg-orange-200" data-test-id="navbar-current-breakpoint"></div>
       <div data-testid="active-page-switch" data-active-page={routePath} x-bind:data-active-page="activePage" x-text="`Active page: ${activePage}`"></div>
       <div>
         {navbar.map((item, index) => {
@@ -39,6 +39,7 @@ export default async function Navbar({ children, routePath }: NavbarProps) {
         <a href="/my-path-a2/my-path-b2/my-path-c2/2" data-spa="true" data-testid="navbar-path-d"><span>path d</span></a>
         <a href="/catch-all-route/page/123/456/789" data-spa="true" data-testid="navbar-catch-all-static"><span>catch all static</span></a>
         <a href="/adwdwf1231wdw" data-spa="true" data-testid="navbar-404"><span>404 page</span></a>
+        <a href="/secret" data-spa="true" data-testid="navbar-secret"><span>secret page</span></a>
       </div>
       <div style="max-width: 50px; max-height: 50px;"><img src="/images/simplified-giraffe.svg" /></div>
       <div style="max-width: 50px; max-height: 50px;"><img width="50" height="50" src="/images/8-cell-simple.gif" /></div>

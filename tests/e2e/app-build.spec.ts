@@ -96,3 +96,29 @@ test('404 page uses config', async ({ page }) => {
   await expect(page.getByTestId('404-page')).toHaveText('404 page not found');
   await expect(page.getByTestId('global-navbar')).toHaveText('Global navbar');
 });
+
+test('secret page does not include PathDData', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/scripts/secret-page.js'));
+  expect(data.includes('PathDData')).toEqual(false);
+});
+
+test('home page includes PathDData', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/scripts/site.js'));
+  expect(data.includes('PathDData')).toEqual(true);
+});
+
+
+test('home page does not include SecretPageData', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/scripts/site.js'));
+  expect(data.includes('SecretPageData')).toEqual(false);
+});
+
+test('secret page does includes SecretPageData', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/scripts/secret-page.js'));
+  expect(data.includes('SecretPageData')).toEqual(true);
+});
+
+test('secret page has no active breakpoint div', async ({ page }) => {
+  await page.goto(url + '/secret');
+  await expect(page.getByTestId('navbar-current-breakpoint')).toHaveCount(0);
+});

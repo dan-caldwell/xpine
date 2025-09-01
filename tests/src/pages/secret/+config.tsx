@@ -1,6 +1,6 @@
-import { WrapperProps } from "xpine/dist/types";
-import Base from "../components/Base";
-import Navbar from "../components/Navbar";
+import { WrapperProps } from "../../../../dist/types"
+import Base from "../../components/Base"
+import Navbar from "../../components/Navbar"
 
 export default {
   wrapper({ req, children, data, routePath }: WrapperProps) {
@@ -9,7 +9,7 @@ export default {
         title={data?.title || 'Default title'}
         description={data?.description}
         req={req}
-        bundleID="site"
+        bundleID="secret-page"
       >
         <Navbar routePath={routePath} />
         <div data-testid="base-config"></div>

@@ -15,6 +15,7 @@ export const config = {
         title={data?.title || 'My awesome website'}
         description={data?.description}
         req={req}
+        bundleID="site"
       >
         <Navbar routePath={routePath}>
           <h1>Home page</h1>

@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { build } from 'esbuild';
+import micromatch from 'micromatch';
 import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
@@ -43,8 +44,33 @@ export async function buildApp(args: BuildAppArgs) {
     if (removePreviousBuild) fs.removeSync(config.distDir);
     const srcDirFiles = globSync(config.srcDir + '/**/*.{js,ts,tsx,jsx}');
     const { componentData, dataFiles, } = await buildAppFiles(srcDirFiles, isDev);
+
+    // Create separate builds depending on xpine bundle config
+    const clientSideBundles = [];
+    if (config?.bundles?.length) {
+      for (const bundle of config.bundles) {
+        const matchingComponentData = componentData?.filter(item => {
+          return !micromatch([item.path], (bundle?.excludePaths || []))?.length;
+        })?.filter(item => {
+          if (!bundle?.includePaths?.length) return true;
+          return micromatch([item.path], (bundle?.includePaths || []))?.length
+        });
+        const matchingDataFiles = dataFiles?.filter(item => {
+          return !micromatch([item.path], (bundle?.excludePaths || []))?.length;
+        })?.filter(item => {
+          if (!bundle?.includePaths?.length) return true;
+          return micromatch([item.path], (bundle?.includePaths || []))?.length
+        });
+        // Individual build
+        const alpineDataFile = await buildAlpineDataFile(matchingComponentData, matchingDataFiles, bundle.id);
+        await buildClientSideFiles([alpineDataFile], isDev, `./${bundle.id}.ts`, bundle.id);
+      }
+    }
+
+    // Full app build
     const alpineDataFile = await buildAlpineDataFile(componentData, dataFiles);
-    await buildClientSideFiles([alpineDataFile], isDev);
+
+    await buildClientSideFiles([alpineDataFile, ...clientSideBundles], isDev);
     fs.removeSync(config.distTempFolder);
     await buildCSS(disableTailwind);
     await buildPublicFolderSymlinks();
@@ -99,9 +125,9 @@ async function buildAppFiles(files: string[], isDev?: boolean) {
 }
 
 // Build client side files
-async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: boolean) {
+async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: boolean, tempClientSidePath?: string, id?: string) {
   // Write the temp file to use
-  const tempFilePath = path.join(config.distTempFolder, './app.ts');
+  const tempFilePath = path.join(config.distTempFolder, tempClientSidePath || './app.ts');
   fs.ensureFileSync(tempFilePath);
   // Get all ts/js files in public folder but ignore the pages scripts
   const pagesScriptsGlob = config.publicDir + '/scripts/pages/**/*.{js,ts}';
@@ -133,7 +159,7 @@ async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: bool
     minify: !isDev,
     sourcemap: isDev ? 'inline' : false,
   });
-  await logSize(config.distPublicDir, 'client');
+  await logSize(config.distPublicDir, id ? `client bundle: ${id}.js` : 'client bundle: app.js');
 }
 
 function writeDevServerClientSideCode(tempFilePath: string) {
@@ -148,7 +174,7 @@ function writeSpaClientSideCode(tempFilePath: string) {
   fs.appendFileSync(tempFilePath, '\n' + content);
 }
 
-async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: any[]) {
+async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: any[], bundleID?: string) {
   const output = {
     imports: [
       'import Alpine from \'alpinejs\';'
@@ -194,9 +220,16 @@ async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: an
     output.code.push(`Alpine.data('${dataFunction.name}', ${dataFunction.name});`);
   }
   const result = output.imports.join('\n') + '\n' + output.code.join('\n') + '\n' + output.end.join('\n');
-  fs.ensureFileSync(config.alpineDataPath);
-  fs.writeFileSync(config.alpineDataPath, result);
-  return config.alpineDataPath;
+  if (bundleID) {
+    const bundlePath = path.join(config.distTempFolder, `./alpine-data-${bundleID}.ts`);
+    fs.ensureFileSync(bundlePath);
+    fs.writeFileSync(bundlePath, result);
+    return bundlePath;
+  } else {
+    fs.ensureFileSync(config.alpineDataPath);
+    fs.writeFileSync(config.alpineDataPath, result);
+    return config.alpineDataPath;
+  }
 }
 
 
@@ -220,7 +253,7 @@ export async function buildPublicFolderSymlinks() {
   }
 }
 
-export async function logSize(pathName: string, type: 'app' | 'client' | 'css', validExtensions = ['.js', '.css']) {
+export async function logSize(pathName: string, type: string, validExtensions = ['.js', '.css']) {
   const files = globSync(pathName + '/**/*' + (type === 'css' ? '.css' : ''));
   const fileSizes = files.map((file) => {
     if (!validExtensions?.find(ext => file.endsWith(ext))) return false;

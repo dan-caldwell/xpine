@@ -427,3 +427,29 @@ setupEnv also supports AWS secrets manager. Simply add SECRETS_NAME=your_aws_sec
 1. Add script to src/public/scripts/pages/your_script.ts
 2. Import script into page HTML (e.g. `<script src="/scripts/pages/your_script.ts">`)
 3. To unload event listeners, use `window.addEventListener('spa-update-page-url', () => { remove event listeners here})` in the code
+
+### Separate client side bundles
+
+You can create separate client side bundles in xpine.config.mjs like this:
+
+```
+export default {
+  bundles: [
+    {
+      id: 'site',
+      excludePaths: [
+        // Excludes SecretPageData
+        '/**/pages/secret/**/*.{js,ts,tsx,jsx}',
+        '/**/pages/secret/*.{js,ts,tsx,jsx}',
+      ],
+    },
+    {
+      id: 'secret-page',
+      includePaths: [
+        // Only uses Alpine data coming from paths in this directory
+        '/**/pages/secret/**/*.{js,ts,tsx,jsx}',
+      ]
+    }
+  ]
+}
+```

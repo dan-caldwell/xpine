@@ -29,7 +29,7 @@ test('context is present on non static path', async ({ page }) => {
   expect(navContext2).toEqual('1');
   expect(navContext3).toEqual('2');
   expect(navContext4).toEqual('3');
-  expect(navContext2Date3).toEqual('4');
-  expect(navContext2Date1).toEqual('5');
-  expect(navContext2Date2).toEqual('6');
+  expect(navContext2Date3).toEqual('5');
+  expect(navContext2Date1).toEqual('6');
+  expect(navContext2Date2).toEqual('7');
 });
