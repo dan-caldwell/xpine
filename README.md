@@ -448,7 +448,8 @@ export default {
       includePaths: [
         // Only uses Alpine data coming from paths in this directory
         '/**/pages/secret/**/*.{js,ts,tsx,jsx}',
-      ]
+      ],
+      requireAuthentication: true, // Only authenticated users can access this .js file
     }
   ]
 }
