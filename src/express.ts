@@ -198,9 +198,31 @@ async function verifyUserMiddleware(req: ServerRequest, _res: Response, next: Ne
   next();
 }
 
+async function verifyAuthenticatedBundleMiddleware(req: ServerRequest, res: Response, next: NextFunction) {
+  if (!req?.originalUrl?.startsWith('/scripts/')) {
+    next();
+    return;
+  }
+  const bundle = req?.originalUrl?.split('/')?.pop()?.split('.js')?.shift();
+  // Check if bundle is valid
+  const foundBundle = config?.bundles?.find(bundleItem => bundleItem?.id === bundle);
+  if (!foundBundle) {
+    next();
+    return;
+  }
+  if (foundBundle?.requireAuthentication && !req?.user) {
+    res.status(403).json({
+      message: 'Unauthenticated',
+    });
+    return
+  }
+  next();
+}
+
 export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Express) => void) {
-  app.use(express.static(config.distPublicDir));
   app.use(verifyUserMiddleware);
+  app.use(verifyAuthenticatedBundleMiddleware);
+  app.use(express.static(config.distPublicDir));
   app.use(requestIP.mw());
 
   const { router, routeResults, } = await createRouter();
