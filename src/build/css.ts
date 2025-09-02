@@ -11,17 +11,21 @@ import tailwindPostcss from '@tailwindcss/postcss';
 export async function buildCSS(disableTailwind?: boolean) {
   const cssFiles = globSync(config.srcDir + '/**/*.css');
   for (const file of cssFiles) {
-    const fileContents = fs.readFileSync(file, 'utf-8');
-    let result = fileContents;
-    if (!disableTailwind) {
-      // Add the breakpoint data before processing Tailwind
-      result = await postcss([postcssAddBreakpointData()]).process(fileContents, { from: file, });
-      result = await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(result.css, { from: file, });
+    try {
+      const fileContents = fs.readFileSync(file, 'utf-8');
+      let result = fileContents;
+      if (!disableTailwind) {
+        // Add the breakpoint data before processing Tailwind
+        result = await postcss([postcssAddBreakpointData()]).process(fileContents, { from: file, });
+        result = await postcss([tailwindPostcss(), postcssRemoveLayers()]).process(result.css, { from: file, });
+      }
+      // Write to dist folder
+      const newPath = file.replace(config.srcDir, config.distDir);
+      fs.ensureFileSync(newPath);
+      fs.writeFileSync(newPath, result.css);
+    } catch (err) {
+      console.error(err);
     }
-    // Write to dist folder
-    const newPath = file.replace(config.srcDir, config.distDir);
-    fs.ensureFileSync(newPath);
-    fs.writeFileSync(newPath, result.css);
   }
   logSize(config.distPublicDir, 'css');
 }

@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.758.0",
-    "@tailwindcss/postcss": "^4.0.8",
+    "@tailwindcss/postcss": "^4.1.12",
     "builtin-modules": "^4.0.0",
     "chokidar": "^4.0.3",
     "dotenv": "^16.4.7",

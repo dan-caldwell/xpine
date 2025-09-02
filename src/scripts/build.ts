@@ -65,12 +65,12 @@ export async function buildApp(args: BuildAppArgs) {
         const alpineDataFile = await buildAlpineDataFile(matchingComponentData, matchingDataFiles, bundle.id);
         await buildClientSideFiles([alpineDataFile], isDev, `./${bundle.id}.ts`, bundle.id);
       }
+    } else {
+      // Full app build
+      const alpineDataFile = await buildAlpineDataFile(componentData, dataFiles);
+      await buildClientSideFiles([alpineDataFile, ...clientSideBundles], isDev);
     }
 
-    // Full app build
-    const alpineDataFile = await buildAlpineDataFile(componentData, dataFiles);
-
-    await buildClientSideFiles([alpineDataFile, ...clientSideBundles], isDev);
     fs.removeSync(config.distTempFolder);
     await buildCSS(disableTailwind);
     await buildPublicFolderSymlinks();
