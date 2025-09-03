@@ -6,6 +6,7 @@ export default {
   isDynamicRoute: /\[(.*)\]/g,
   endsWithTSX: /\.tsx$/,
   endsWithJSX: /\.jsx$/,
+  endsWithIndexNoExtension: /\/index$/,
   endsWithFileName: /\.(html|tsx|jsx|js|ts)$/,
   indexFile: /index\.(html|tsx|jsx|js|ts)$/g,
   catchAllRoute: /\/_all_$/g,

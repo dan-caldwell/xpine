@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { build } from 'esbuild';
 import micromatch from 'micromatch';
+import minifyXML from "minify-xml";
 import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
@@ -78,6 +79,7 @@ export async function buildApp(args: BuildAppArgs) {
     if (!isDev) await triggerXPineOnLoad();
     // Build files with configs if there are any
     if (!isDev) await buildFilesWithConfigs(componentData);
+    if (!isDev) buildSitemap();
     if (!isDev) context.clear();
   } catch (err) {
     console.error('Build failed');
@@ -428,4 +430,43 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
       addDotJS(allPackages, extensions, isDev)
     ],
   });
+}
+
+export async function buildSitemap() {
+  if (!config?.sitemap) return;
+
+  const staticPages = globSync(`${config.distPagesDir}/**/*.html`) || [];
+  const dynamicPages = globSync(`${config.pagesDir}/**/*.{jsx,tsx}`) || [];
+  const allPages = staticPages.concat(dynamicPages);
+  const filteredPages = allPages.filter(filePath => {
+    return !micromatch([filePath], (config.sitemap?.excludePaths || []))?.length;
+  });
+  const pages = filteredPages.map(filePath => {
+    const replacedExtensions = filePath.replace(regex.endsWithFileName, '');
+    const replacedPagesPath = replacedExtensions.replace(config.pagesDir, '');
+    const replacedDistPath = replacedPagesPath.replace(config.distPagesDir, '');
+    const replacedIndex = replacedDistPath.replace(regex.endsWithIndexNoExtension, '');
+    if (replacedIndex === '') return '/';
+    return replacedIndex;
+  }).filter(filePath => {
+    return !filePath.includes('+config');
+  });
+
+  console.log({ pages });
+
+  // const sitemap = `
+  //   <?xml version="1.0" encoding="UTF-8"?>
+  //   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  //   ${metadata.pages.concat(metadata.posts).map(item => {
+  //   return `
+  //       <url>
+  //         <loc>https://${domain}${item.url}</loc>
+  //       </url>
+  //     `;
+  // }).join('\n')}
+  //   </urlset>
+  // `;
+  // const sitemapPath = path.join(__dirname, '../../public/sitemap.xml');
+  // fs.ensureFileSync(sitemapPath);
+  // fs.writeFileSync(sitemapPath, minifyXML(sitemap));
 }
