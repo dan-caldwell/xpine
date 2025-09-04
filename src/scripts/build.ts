@@ -313,11 +313,10 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
   // onInit
   if (componentImport?.onInit) await componentImport.onInit();
 
-  const outputPath = componentDynamicPaths?.length ?
-    componentDynamicPaths.reduce((total, current) => {
-      return total.replace(`/[${current}]`, '');
-    }, path.dirname(builtComponentPath)) :
-    path.dirname(builtComponentPath);
+  const outputPath = determineOutputPathForStaticPath(builtComponentPath, componentDynamicPaths);
+
+  if (!outputPath) return;
+
   if (typeof config?.staticPaths === 'boolean') {
     const urlPath = filePathToURLPath(outputPath);
     // Build as-is
@@ -325,9 +324,12 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
       const req = { params: {}, } as ServerRequest;
       const data = config?.data ? await config.data(req) : null;
       const staticComponentOutput = await componentFn({ data, routePath: urlPath, });
+
       // Write file
+      const htmlOutputPath = path.join(outputPath, './index.html');
+      fs.ensureFileSync(htmlOutputPath);
       fs.writeFileSync(
-        path.join(outputPath, './index.html'),
+        htmlOutputPath,
         doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath, }) : staticComponentOutput) + staticComment
       );
     } catch (err) {
@@ -358,6 +360,23 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
         console.error(err);
         console.error('Could not build static component', component.path);
       }
+    }
+  }
+}
+
+export function determineOutputPathForStaticPath(builtComponentPath: string, componentDynamicPaths?: string[]) {
+  if (componentDynamicPaths?.length) {
+    return componentDynamicPaths.reduce((total, current) => {
+      return total.replace(`/[${current}]`, '');
+    }, path.dirname(builtComponentPath));
+  } else {
+    if (builtComponentPath?.match(regex.endsWithIndex)) {
+      // Use path.dirname for index files
+      return path.dirname(builtComponentPath);
+    } else {
+      // Use the regular file name
+      if (!builtComponentPath.match(regex.endsWithJs)) return null;
+      return builtComponentPath.replace(regex.endsWithJs, '');
     }
   }
 }
@@ -451,8 +470,6 @@ export async function buildSitemap() {
   }).filter(filePath => {
     return !filePath.includes('+config');
   });
-
-  console.log({ pages });
 
   // const sitemap = `
   //   <?xml version="1.0" encoding="UTF-8"?>
