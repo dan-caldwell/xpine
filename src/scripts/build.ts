@@ -322,7 +322,8 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     // Build as-is
     try {
       const req = { params: {}, } as ServerRequest;
-      const data = config?.data ? await config.data(req) : null;
+      let data = config?.data ? await config.data(req) : null;
+      data = { ...data, routePath: urlPath };
       const staticComponentOutput = await componentFn({ data, routePath: urlPath, });
 
       // Write file
@@ -348,7 +349,8 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
         const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
         const urlPath = filePathToURLPath(updatedOutDir);
 
-        const data = config?.data ? await config.data(req) : null;
+        let data = config?.data ? await config.data(req) : null;
+        data = { ...data, routePath: urlPath };
         const staticComponentOutput = await componentFn({ req, data, routePath: urlPath, });
         // Write file
         fs.ensureDirSync(updatedOutDir);

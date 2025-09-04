@@ -36,6 +36,7 @@ test('dynamic paths with data in +config - path c', async ({ page }) => {
 
 test('folder with named nested pages is static', async ({ page }) => {
   const result = await page.goto(url + '/folder-with-named-nested-pages-is-static/nested-folder-1/nested-named-route-1');
+  await expect(page.getByTestId('nested-route-path')).toHaveText('/folder-with-named-nested-pages-is-static/nested-folder-1/nested-named-route-1');
   const body = (await result.body()).toString();
   expect(body).toContain('<!-- static -->');
 });
