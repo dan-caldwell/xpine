@@ -1,8 +1,8 @@
-export default function MyNestedFolderPage({ data }) {
+export default function MyNestedFolderPage({ routePath }) {
   return (
     <div>
       <div>My nested folder page</div>
-      <div data-testid="nested-route-path">{data.routePath}</div>
+      <div data-testid="nested-route-path">{routePath}</div>
     </div>
   )
 }
