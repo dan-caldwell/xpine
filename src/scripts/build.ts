@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { build } from 'esbuild';
 import micromatch from 'micromatch';
+import minifyXML from "minify-xml";
 import {
   convertEntryPointsToSingleFile,
   findDataAttributesAndFunctions,
@@ -78,6 +79,7 @@ export async function buildApp(args: BuildAppArgs) {
     if (!isDev) await triggerXPineOnLoad();
     // Build files with configs if there are any
     if (!isDev) await buildFilesWithConfigs(componentData);
+    if (!isDev) buildSitemap();
     if (!isDev) context.clear();
   } catch (err) {
     console.error('Build failed');
@@ -311,21 +313,34 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
   // onInit
   if (componentImport?.onInit) await componentImport.onInit();
 
-  const outputPath = componentDynamicPaths?.length ?
-    componentDynamicPaths.reduce((total, current) => {
-      return total.replace(`/[${current}]`, '');
-    }, path.dirname(builtComponentPath)) :
-    path.dirname(builtComponentPath);
+  const outputPath = determineOutputPathForStaticPath(builtComponentPath, componentDynamicPaths);
+
+  if (!outputPath) return;
+
   if (typeof config?.staticPaths === 'boolean') {
     const urlPath = filePathToURLPath(outputPath);
     // Build as-is
     try {
-      const req = { params: {}, } as ServerRequest;
-      const data = config?.data ? await config.data(req) : null;
-      const staticComponentOutput = await componentFn({ data, routePath: urlPath, });
+      const req = {
+        params: {},
+        route: {
+          path: urlPath,
+        },
+        url: urlPath,
+      } as ServerRequest;
+      let data = config?.data ? await config.data(req) : null;
+      data = {
+        ...data,
+        routePath: urlPath,
+      };
+
+      const staticComponentOutput = await componentFn({ data, routePath: urlPath, req, });
+
       // Write file
+      const htmlOutputPath = path.join(outputPath, './index.html');
+      fs.ensureFileSync(htmlOutputPath);
       fs.writeFileSync(
-        path.join(outputPath, './index.html'),
+        htmlOutputPath,
         doctypeHTML + (config?.wrapper ? await config.wrapper({ req, children: staticComponentOutput, config, data, routePath: urlPath, }) : staticComponentOutput) + staticComment
       );
     } catch (err) {
@@ -336,15 +351,20 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     const dynamicPaths = await config.staticPaths();
     for (const dynamicPath of dynamicPaths) {
       try {
+        const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
+        const urlPath = filePathToURLPath(updatedOutDir);
+
         const req = {
           params: {
             ...(componentDynamicPaths?.length ? dynamicPath : {}),
           },
+          route: {
+            path: urlPath,
+          },
+          url: urlPath,
         } as ServerRequest;
-        const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
-        const urlPath = filePathToURLPath(updatedOutDir);
-
-        const data = config?.data ? await config.data(req) : null;
+        let data = config?.data ? await config.data(req) : null;
+        data = { ...data, routePath: urlPath };
         const staticComponentOutput = await componentFn({ req, data, routePath: urlPath, });
         // Write file
         fs.ensureDirSync(updatedOutDir);
@@ -356,6 +376,23 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
         console.error(err);
         console.error('Could not build static component', component.path);
       }
+    }
+  }
+}
+
+export function determineOutputPathForStaticPath(builtComponentPath: string, componentDynamicPaths?: string[]) {
+  if (componentDynamicPaths?.length) {
+    return componentDynamicPaths.reduce((total, current) => {
+      return total.replace(`/[${current}]`, '');
+    }, path.dirname(builtComponentPath));
+  } else {
+    if (builtComponentPath?.match(regex.endsWithIndex)) {
+      // Use path.dirname for index files
+      return path.dirname(builtComponentPath);
+    } else {
+      // Use the regular file name
+      if (!builtComponentPath.match(regex.endsWithJs)) return null;
+      return builtComponentPath.replace(regex.endsWithJs, '');
     }
   }
 }
@@ -428,4 +465,48 @@ export async function buildOnLoadFile(componentData: ComponentData[], isDev?: bo
       addDotJS(allPackages, extensions, isDev)
     ],
   });
+}
+
+export async function buildSitemap() {
+  if (!config?.sitemap) return;
+
+  const staticPages = globSync(`${config.distPagesDir}/**/*.html`) || [];
+  const dynamicPages = globSync(`${config.pagesDir}/**/*.{jsx,tsx}`) || [];
+  const allPages = staticPages.concat(dynamicPages);
+  const filteredPages = allPages.filter(filePath => {
+    return !micromatch([filePath], (config.sitemap?.excludePaths || []))?.length;
+  });
+  const pages = filteredPages.map(filePath => {
+    const replacedExtensions = filePath.replace(regex.endsWithFileName, '');
+    const replacedPagesPath = replacedExtensions.replace(config.pagesDir, '');
+    const replacedDistPath = replacedPagesPath.replace(config.distPagesDir, '');
+    const replacedIndex = replacedDistPath.replace(regex.endsWithIndexNoExtension, '');
+    if (replacedIndex === '') return '/';
+    return replacedIndex;
+  }).filter(filePath => {
+    return !filePath.includes('+config');
+  });
+
+  const sitemap = `
+    <?xml version="1.0" encoding="UTF-8"?>
+    <urlset 
+      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd"
+      xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+      xmlns:xhtml="http://www.w3.org/1999/xhtml"
+      xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+      xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"
+    >
+    ${pages.map(page => {
+    return `
+      <url>
+        <loc>${config?.domain ? `https://${config.domain}${page}` : page}</loc>
+      </url>
+    `;
+  }).join('\n')}
+    </urlset>
+  `;
+  fs.ensureFileSync(config.sitemapPath);
+  fs.writeFileSync(config.sitemapPath, minifyXML(sitemap));
 }

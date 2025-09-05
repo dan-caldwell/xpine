@@ -34,6 +34,13 @@ test('dynamic paths with data in +config - path c', async ({ page }) => {
   expect(body).toContain('<!-- static -->');
 });
 
+test('folder with named nested pages is static', async ({ page }) => {
+  const result = await page.goto(url + '/folder-with-named-nested-pages-is-static/nested-folder-1/nested-named-route-1');
+  await expect(page.getByTestId('nested-route-path')).toHaveText('/folder-with-named-nested-pages-is-static/nested-folder-1/nested-named-route-1');
+  const body = (await result.body()).toString();
+  expect(body).toContain('<!-- static -->');
+});
+
 test('dynamic inner paths with config in the component - path d', async ({ page }) => {
   const result = await page.goto(url + '/my-path-a2/my-path-b2/my-path-c2/2');
   await expect(page.getByTestId('path-d-data')).toHaveText('qui est esse');

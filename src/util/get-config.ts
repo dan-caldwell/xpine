@@ -12,6 +12,7 @@ export function fromRoot(pathName?: string) {
 const userConfig = require(path.join(process.cwd(), './xpine.config.mjs')).default;
 
 const configDefaults = {
+  domain: '',
   rootDir: fromRoot(),
   srcDir: fromRoot('./src'),
   distDir: fromRoot('./dist'),
@@ -60,6 +61,9 @@ const configDefaults = {
   get globalCSSFile() {
     return path.join(this.publicDir, './styles/global.css');
   },
+  get sitemapPath() {
+    return path.join(this.distPublicDir, './sitemap.xml');
+  }
 };
 
 export const config: XPineConfig = {
