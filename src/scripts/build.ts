@@ -321,10 +321,19 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     const urlPath = filePathToURLPath(outputPath);
     // Build as-is
     try {
-      const req = { params: {}, } as ServerRequest;
+      const req = {
+        params: {},
+        route: {
+          path: urlPath,
+        },
+      } as ServerRequest;
       let data = config?.data ? await config.data(req) : null;
-      data = { ...data, routePath: urlPath };
-      const staticComponentOutput = await componentFn({ data, routePath: urlPath, });
+      data = {
+        ...data,
+        routePath: urlPath,
+      };
+
+      const staticComponentOutput = await componentFn({ data, routePath: urlPath, req, });
 
       // Write file
       const htmlOutputPath = path.join(outputPath, './index.html');
@@ -341,14 +350,17 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
     const dynamicPaths = await config.staticPaths();
     for (const dynamicPath of dynamicPaths) {
       try {
+        const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
+        const urlPath = filePathToURLPath(updatedOutDir);
+
         const req = {
           params: {
             ...(componentDynamicPaths?.length ? dynamicPath : {}),
           },
+          route: {
+            path: urlPath,
+          },
         } as ServerRequest;
-        const updatedOutDir = path.join(outputPath, `./${componentDynamicPaths.map(key => dynamicPath[key]).join('/')}`);
-        const urlPath = filePathToURLPath(updatedOutDir);
-
         let data = config?.data ? await config.data(req) : null;
         data = { ...data, routePath: urlPath };
         const staticComponentOutput = await componentFn({ req, data, routePath: urlPath, });
