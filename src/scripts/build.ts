@@ -326,6 +326,7 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
         route: {
           path: urlPath,
         },
+        url: urlPath,
       } as ServerRequest;
       let data = config?.data ? await config.data(req) : null;
       data = {
@@ -360,6 +361,7 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
           route: {
             path: urlPath,
           },
+          url: urlPath,
         } as ServerRequest;
         let data = config?.data ? await config.data(req) : null;
         data = { ...data, routePath: urlPath };
