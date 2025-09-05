@@ -487,19 +487,26 @@ export async function buildSitemap() {
     return !filePath.includes('+config');
   });
 
-  // const sitemap = `
-  //   <?xml version="1.0" encoding="UTF-8"?>
-  //   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-  //   ${metadata.pages.concat(metadata.posts).map(item => {
-  //   return `
-  //       <url>
-  //         <loc>https://${domain}${item.url}</loc>
-  //       </url>
-  //     `;
-  // }).join('\n')}
-  //   </urlset>
-  // `;
-  // const sitemapPath = path.join(__dirname, '../../public/sitemap.xml');
-  // fs.ensureFileSync(sitemapPath);
-  // fs.writeFileSync(sitemapPath, minifyXML(sitemap));
+  const sitemap = `
+    <?xml version="1.0" encoding="UTF-8"?>
+    <urlset 
+      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd"
+      xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+      xmlns:xhtml="http://www.w3.org/1999/xhtml"
+      xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+      xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"
+    >
+    ${pages.map(page => {
+    return `
+      <url>
+        <loc>${config?.domain ? `https://${config.domain}${page}` : page}</loc>
+      </url>
+    `;
+  }).join('\n')}
+    </urlset>
+  `;
+  fs.ensureFileSync(config.sitemapPath);
+  fs.writeFileSync(config.sitemapPath, minifyXML(sitemap));
 }
