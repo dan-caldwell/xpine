@@ -28,6 +28,7 @@ async function loadSecretsManagerSecrets() {
     client.destroy();
   } catch (err) {
     console.error(`Could not load secret: ${process.env.SECRET_NAME}`);
+    console.error(err);
     return null;
   }
 }
