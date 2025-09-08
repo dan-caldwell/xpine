@@ -15,5 +15,8 @@ export default {
         '/**/pages/secret/**/*.{js,ts,tsx,jsx}',
       ]
     }
-  ]
+  ],
+  sitemap: {
+    excludePaths: [],
+  }
 }

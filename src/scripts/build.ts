@@ -476,7 +476,7 @@ export async function buildSitemap() {
   const filteredPages = allPages.filter(filePath => {
     return !micromatch([filePath], (config.sitemap?.excludePaths || []))?.length;
   });
-  const pages = filteredPages.map(filePath => {
+  let pages = filteredPages.map(filePath => {
     const replacedExtensions = filePath.replace(regex.endsWithFileName, '');
     const replacedPagesPath = replacedExtensions.replace(config.pagesDir, '');
     const replacedDistPath = replacedPagesPath.replace(config.distPagesDir, '');
@@ -486,6 +486,8 @@ export async function buildSitemap() {
   }).filter(filePath => {
     return !filePath.includes('+config');
   });
+
+  pages = [...new Set(pages)];
 
   const sitemap = `
     <?xml version="1.0" encoding="UTF-8"?>
