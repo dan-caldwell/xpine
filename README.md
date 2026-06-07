@@ -455,7 +455,7 @@ export default {
 }
 ```
 
-### Standalone public scripts
+### Pages public scripts
 
 If you need to add a one-off public script, add a folder in the `/public/scripts` directory called `pages`.
 
@@ -468,3 +468,11 @@ Any `.js` or `.ts` file in this directory will be added as-is to the `public` fo
 ```
 <script src="/scripts/pages/my-awesome-page/sw.js" />
 ```
+
+### Standalone public files
+
+If you need to add a file that needs direct routing, like a service worker file, add a folder in the `/public` directory called `standalone`.
+
+For example : `/public/standalone/my-page/sw.js`
+
+Which will result in the public path of `/my-page/sw.js`

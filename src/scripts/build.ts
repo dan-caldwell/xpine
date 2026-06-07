@@ -133,10 +133,14 @@ async function buildClientSideFiles(alpineDataFiles: string[] = [], isDev?: bool
   fs.ensureFileSync(tempFilePath);
   // Get all ts/js files in public folder but ignore the pages scripts
   const pagesScriptsGlob = config.publicDir + '/scripts/pages/**/*.{js,ts}';
+  const standaloneFolderGlob = config.publicDir + '/standalone/**/*.*';
   const clientFiles = globSync(
     config.publicDir + '/**/*.{js,ts}',
     {
-      ignore: pagesScriptsGlob,
+      ignore: [
+        pagesScriptsGlob,
+        standaloneFolderGlob,
+      ],
     }
   );
   // Filter out all public/pages files
@@ -239,8 +243,13 @@ async function buildAlpineDataFile(componentData: ComponentData[], dataFiles: an
 // We need to symlink the non CSS or JS files from the src/public folder into the dist folder
 export async function buildPublicFolderSymlinks() {
   const files = globSync(config.publicDir + '/**/*.*', {
-    ignore: '/**/*.{css,js,ts,tsx,jsx}',
+    ignore: [
+      '/**/*.{css,js,ts,tsx,jsx}',
+      '/**/standalone/**/*.*'
+    ],
   });
+
+  const standaloneFiles = globSync(config.publicDir + '/standalone/**/*.*');
 
   // Create symlinks in dist directory
   for (const file of files) {
@@ -251,6 +260,18 @@ export async function buildPublicFolderSymlinks() {
       const newDir = splitNewPath.join('/');
       fs.ensureDirSync(newDir);
       fs.symlinkSync(file, newPath);
+    } catch { }
+  }
+
+  for (const file of standaloneFiles) {
+    try {
+      const newPath = file.replace(config.srcDir, config.distDir);
+      const splitNewPath = newPath.split('/').filter(item => item !== 'standalone');
+      const updatedNewPath = splitNewPath.join('/');
+      splitNewPath.pop();
+      const newDir = splitNewPath.join('/');
+      fs.ensureDirSync(newDir);
+      fs.symlinkSync(file, updatedNewPath);
     } catch { }
   }
 }

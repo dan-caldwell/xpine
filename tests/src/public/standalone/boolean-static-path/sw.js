@@ -1,0 +1,1 @@
+console.log('sw-test-on-boolean-static-path');

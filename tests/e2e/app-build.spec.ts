@@ -130,8 +130,16 @@ test('secret page has no active breakpoint div', async ({ page }) => {
   await expect(page.getByTestId('navbar-current-breakpoint')).toHaveCount(0);
 });
 
-test('standalone pages script is created', async ({ page }) => {
+test('pages script is created', async ({ page }) => {
   const data = fs.readFileSync(path.join(config.distDir, './public/scripts/pages/test-page/sw.js'));
   expect(data.includes('pages-test')).toEqual(true);
   expect(data.includes('Alpine')).toEqual(false);
+});
+
+test('standalone files created', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/apps/test/sw.js'));
+  expect(data.includes('sw-test-on-standalone')).toEqual(true);
+  expect(data.includes('Alpine')).toEqual(false);
+  const buildData = fs.readFileSync(path.join(config.distDir, './public/scripts/site.js'));
+   expect(buildData.includes('sw-test-on-standalone')).toEqual(false);
 });

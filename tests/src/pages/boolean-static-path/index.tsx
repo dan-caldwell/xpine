@@ -18,6 +18,7 @@ export default function Component({ data }: PageProps) {
   return (
     <>
       <div data-testid="boolean-static-path">{data.title}</div>
+      <script src="sw.js" />
     </>
   );
 }
