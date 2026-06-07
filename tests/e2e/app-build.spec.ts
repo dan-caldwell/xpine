@@ -129,3 +129,9 @@ test('secret page has no active breakpoint div', async ({ page }) => {
   await page.goto(url + '/secret');
   await expect(page.getByTestId('navbar-current-breakpoint')).toHaveCount(0);
 });
+
+test('standalone pages script is created', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/scripts/pages/test-page/sw.js'));
+  expect(data.includes('pages-test')).toEqual(true);
+  expect(data.includes('Alpine')).toEqual(false);
+});

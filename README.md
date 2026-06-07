@@ -454,3 +454,17 @@ export default {
   ]
 }
 ```
+
+### Standalone public scripts
+
+If you need to add a one-off public script, add a folder in the `/public/scripts` directory called `pages`.
+
+For example: `/public/scripts/pages/my-awesome-page/sw.js`
+
+Which will result in the public path of `/scripts/pages/my-awesome-page/sw.js`
+
+Any `.js` or `.ts` file in this directory will be added as-is to the `public` folder and can be used in a script tag:
+
+```
+<script src="/scripts/pages/my-awesome-page/sw.js" />
+```

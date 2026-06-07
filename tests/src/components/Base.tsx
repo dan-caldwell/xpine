@@ -27,6 +27,7 @@ export default async function Base({
         <title>{title || 'My Website'}</title>
         <link rel="stylesheet" href="/styles/global.css" />
         <script defer src={`/scripts/${bundleID || 'app'}.js`}></script>
+        <script src="/scripts/pages/test-page/sw.js"></script>
         {head}
       </head>
       <body data-time={Date.now()}>
