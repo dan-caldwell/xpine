@@ -2,7 +2,26 @@ import { test, expect } from '@playwright/test';
 import { config } from 'xpine';
 import fs from 'fs-extra';
 import path from 'path';
+import http from 'http';
 import { url } from '../playwright.config';
+
+// Send a request with a raw, un-normalized path (browsers/fetch collapse "../",
+// so we use http directly to faithfully reproduce an attacker's request).
+function rawGet(rawPath: string): Promise<{ status: number; body: string }> {
+  const target = new URL(url);
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: target.hostname, port: target.port, path: rawPath, method: 'GET' },
+      res => {
+        let body = '';
+        res.on('data', chunk => (body += chunk));
+        res.on('end', () => resolve({ status: res.statusCode || 0, body }));
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
 
 test('app builds', async ({ page }) => {
   await page.goto(url);
@@ -107,6 +126,24 @@ test('multi-segment dynamic route - unknown slug falls through to 404', async ({
   expect(result.status()).toEqual(404);
   await expect(page.getByTestId('404-page')).toBeAttached();
   await expect(page.getByTestId('blog-slug')).toHaveCount(0);
+});
+
+test('static path serving cannot traverse outside the pages dir', async () => {
+  // Plant a sentinel file as a sibling of the pages dir (outside it).
+  const secret = 'TOP_SECRET_TRAVERSAL_SENTINEL';
+  const sentinelDir = path.join(config.distDir, 'SENTINEL_TRAVERSAL');
+  fs.ensureDirSync(sentinelDir);
+  fs.writeFileSync(path.join(sentinelDir, 'index.html'), secret);
+  try {
+    // catch-all route at /pages/catch-all-route/page/x → 4x "../" reaches distDir
+    const encoded = await rawGet('/catch-all-route/page/x/..%2f..%2f..%2f..%2fSENTINEL_TRAVERSAL');
+    expect(encoded.body).not.toContain(secret);
+
+    const raw = await rawGet('/catch-all-route/page/x/../../../../SENTINEL_TRAVERSAL');
+    expect(raw.body).not.toContain(secret);
+  } finally {
+    fs.removeSync(sentinelDir);
+  }
 });
 
 test('catch all api endpoint', async ({ page }) => {

@@ -209,6 +209,41 @@ export const config = {
 }
 ```
 
+### CSRF protection
+
+Because authentication is cookie based, state-changing requests (POST/PUT/PATCH/DELETE) are exposed to cross-site request forgery. Enable the built-in guard by setting `csrf` in your `xpine.config.mjs`:
+
+```
+export default {
+  csrf: true,
+}
+```
+
+It uses a stateless **signed double-submit cookie**. On safe requests (GET/HEAD/OPTIONS) it sets a `csrfToken` cookie (readable by client JS). On state-changing requests it requires that same token to be echoed back in an `x-csrf-token` header (or a `_csrf` form field) — a cross-site attacker can make the browser send the cookie but cannot read it or set the header, so forged requests are rejected with a 403. The token is HMAC-signed so it can't be forged even by an attacker who can plant a cookie.
+
+Set a secret via the `CSRF_SECRET` env var (it falls back to `JWT_PRIVATE_KEY`). The server fails to start if neither is set.
+
+For `fetch`/Alpine requests, read the cookie and send it back:
+```
+const token = document.cookie.split('; ').find(c => c.startsWith('csrfToken='))?.split('=')[1];
+await fetch('/api/thing', {
+  method: 'POST',
+  headers: { 'x-csrf-token': decodeURIComponent(token) },
+});
+```
+For server-rendered HTML forms, the token is available on `res.locals.csrfToken` (pages receive `res`); render it as a hidden `<input name="_csrf">`.
+
+You can customize the cookie/header/field names, cookie attributes, and skip specific path prefixes (e.g. signed webhooks):
+```
+export default {
+  csrf: {
+    headerName: 'x-csrf-token',
+    cookie: { sameSite: 'strict', secure: true },
+    ignorePaths: ['/api/webhooks/'],
+  },
+}
+```
+
 ### Static Site Generation
 
 Generate path specific static pages by specifying in the config of either the page's file, such as `/src/pages/about.tsx` with a config export:
