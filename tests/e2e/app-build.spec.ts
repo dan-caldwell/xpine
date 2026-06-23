@@ -146,6 +146,12 @@ test('static path serving cannot traverse outside the pages dir', async () => {
   }
 });
 
+test('user input rendered through JSX is HTML-escaped (no XSS)', async () => {
+  const res = await rawGet('/blog/preview/%3Cimg%20src=x%20onerror=alert(1)%3E');
+  expect(res.body).not.toContain('<img src=x onerror=alert(1)>');
+  expect(res.body).toContain('&lt;img src=x onerror=alert(1)&gt;');
+});
+
 test('catch all api endpoint', async ({ page }) => {
   const result = await page.goto(url + '/catch-all-route/api/my-awesome-param');
   const body = (await result.body()).toString();

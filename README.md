@@ -244,6 +244,23 @@ export default {
 }
 ```
 
+### HTML escaping (XSS protection)
+
+Values interpolated into JSX are HTML-escaped by default, so rendering user input is safe:
+```
+// req.params.slug = '<img src=x onerror=alert(1)>'
+<div>{req.params.slug}</div>   // renders &lt;img src=x onerror=alert(1)&gt;
+```
+Nested components and elements are not re-escaped, and attribute values are escaped too. Text inside `<script>`/`<style>` is left raw (it isn't HTML) — never interpolate untrusted data there.
+
+If you have trusted HTML that should render as-is, opt out explicitly with `raw()`:
+```
+import { raw } from 'xpine';
+
+<div>{raw(trustedHtmlString)}</div>
+```
+Only use `raw()` with HTML you control — never with user input.
+
 ### Static Site Generation
 
 Generate path specific static pages by specifying in the config of either the page's file, such as `/src/pages/about.tsx` with a config export:
