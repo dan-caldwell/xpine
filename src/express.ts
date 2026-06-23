@@ -64,8 +64,10 @@ type RouteRegister = (routePath: string, preHandlers?: RequestHandler[]) => void
 function parseRoutePath(route: string): ParsedRoute {
   const slugRoute = route.replace(/[ ]/g, '');
   const foundMethod = methods.find(method => slugRoute.toUpperCase().endsWith(`.${method.toUpperCase()}`));
-  // Strip the .METHOD suffix; keep the bracketed template for spread expansion.
-  const templateRoute = foundMethod ? (slugRoute.split('.').shift() ?? slugRoute) : slugRoute;
+  // Strip the trailing .METHOD suffix (e.g. ".GET"); keep the bracketed template
+  // for spread expansion. Slicing the exact suffix length preserves any dots that
+  // appear earlier in the path.
+  const templateRoute = foundMethod ? slugRoute.slice(0, -(foundMethod.length + 1)) : slugRoute;
 
   // Multi-segment dynamic tokens first: [...slug] -> :slug
   let formattedRouteItem = templateRoute.replace(regex.spreadRoute, (_match, name) => ':' + name);
@@ -405,9 +407,11 @@ export function routeHasStaticPath(route: string, params: { [key: string]: strin
   const paramEntries = Object.entries(params);
   let routeToStaticPath = route;
   for (const [key, value] of paramEntries) {
-    routeToStaticPath = routeToStaticPath.replace(`:${key}`, value);
+    // Use a replacer function so "$" sequences in the value (e.g. "$1", "$&")
+    // are inserted literally instead of being treated as replacement patterns.
+    routeToStaticPath = routeToStaticPath.replace(`:${key}`, () => value);
     // Handle catch all routes
-    if (key === '0') routeToStaticPath = routeToStaticPath.replace(/\/\*/g, `/${value}`);
+    if (key === '0') routeToStaticPath = routeToStaticPath.replace(/\/\*/g, () => `/${value}`);
   }
   routeToStaticPath += '/index.html';
   // Resolve the requested file and confine it to distPagesDir. Params come from
