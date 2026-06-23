@@ -24,10 +24,14 @@ export type WrapperProps = {
 }
 
 export type ConfigFile = {
-  staticPaths?: boolean | (() => Promise<{ [key: string]: string }[]>);
+  staticPaths?: boolean | (() => Promise<{ [key: string]: string }[]> | { [key: string]: string }[]);
   wrapper?: (props: WrapperProps) => Promise<any>;
   data?: (req: ServerRequest) => Promise<any>;
   routeMiddleware?: (req: ServerRequest, res: Response, next: NextFunction) => void;
+  // For multi-segment dynamic routes ([...slug]): validate a slug that was not
+  // generated at build time so it can be resolved safely at request time.
+  // Return false (the default for unknown slugs) to fall through to the 404 handler.
+  isValid?: (slug: string, req: ServerRequest) => boolean | Promise<boolean>;
 }
 
 export type PageProps = {

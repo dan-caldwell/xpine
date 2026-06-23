@@ -155,6 +155,47 @@ You can create catch all routes by naming the file \_all\_.(jsx|tsx|js|ts). You 
 
 You can get the route param in your function with req.params[0], such as how express handles catch all routes.
 
+### Multi-segment dynamic routes (`[...slug]`)
+
+Catch all (`_all_`) routes register a single Express wildcard, which means they match _every_ path under their prefix — including paths that should not exist. For deeply nested but known dynamic routes (e.g. a blog post at `/blog/technology/devops/my-blog-post`), use a multi-segment dynamic param instead. Name the file `[...slug].(jsx|tsx|js|ts)`; the captured value (which may contain slashes) is available as `req.params.slug`.
+
+Instead of a wildcard, XPine registers an **explicit Express route for each slug** returned by the `staticPaths` config function, so unknown paths safely fall through to your 404 page:
+
+```
+// /src/pages/blog/+config.ts
+export default {
+  staticPaths() {
+    // Slugs can come from a CMS/database
+    return [
+      { slug: 'technology/devops/my-blog-post' },
+    ];
+  },
+};
+```
+
+```
+// /src/pages/blog/[...slug].tsx
+import { PageProps } from 'xpine/dist/types';
+
+export default function BlogPost({ req }: PageProps) {
+  return <div>{req.params.slug}</div>;
+}
+```
+
+Each slug from `staticPaths` is also statically generated at build time. To allow slugs that are not known at build time (without falling back to an unsafe catch-all), add an `isValid` function to the config. It receives the requested slug and runs at request time; return `false` (the default for unknown slugs) to fall through to the 404 handler:
+
+```
+export default {
+  staticPaths() {
+    return [{ slug: 'technology/devops/my-blog-post' }];
+  },
+  // Resolve newly-published slugs without a rebuild
+  async isValid(slug, req) {
+    return await postExists(slug);
+  },
+};
+```
+
 ### Route specific middleware
 
 If you need route specific middleware, e.g. for file uploads, you can specify a `routeMiddleware` function in a config variable in the endpoint file:
@@ -167,6 +208,58 @@ export const config = {
   }
 }
 ```
+
+### CSRF protection
+
+Because authentication is cookie based, state-changing requests (POST/PUT/PATCH/DELETE) are exposed to cross-site request forgery. Enable the built-in guard by setting `csrf` in your `xpine.config.mjs`:
+
+```
+export default {
+  csrf: true,
+}
+```
+
+It uses a stateless **signed double-submit cookie**. On safe requests (GET/HEAD/OPTIONS) it sets a `csrfToken` cookie (readable by client JS). On state-changing requests it requires that same token to be echoed back in an `x-csrf-token` header (or a `_csrf` form field) — a cross-site attacker can make the browser send the cookie but cannot read it or set the header, so forged requests are rejected with a 403. The token is HMAC-signed so it can't be forged even by an attacker who can plant a cookie.
+
+Set a secret via the `CSRF_SECRET` env var (it falls back to `JWT_PRIVATE_KEY`). The server fails to start if neither is set.
+
+For `fetch`/Alpine requests, read the cookie and send it back:
+```
+const token = document.cookie.split('; ').find(c => c.startsWith('csrfToken='))?.split('=')[1];
+await fetch('/api/thing', {
+  method: 'POST',
+  headers: { 'x-csrf-token': decodeURIComponent(token) },
+});
+```
+For server-rendered HTML forms, the token is available on `res.locals.csrfToken` (pages receive `res`); render it as a hidden `<input name="_csrf">`.
+
+You can customize the cookie/header/field names, cookie attributes, and skip specific path prefixes (e.g. signed webhooks):
+```
+export default {
+  csrf: {
+    headerName: 'x-csrf-token',
+    cookie: { sameSite: 'strict', secure: true },
+    ignorePaths: ['/api/webhooks/'],
+  },
+}
+```
+
+### HTML escaping (XSS protection)
+
+Values interpolated into JSX are HTML-escaped by default, so rendering user input is safe:
+```
+// req.params.slug = '<img src=x onerror=alert(1)>'
+<div>{req.params.slug}</div>   // renders &lt;img src=x onerror=alert(1)&gt;
+```
+Nested components and elements are not re-escaped, and attribute values are escaped too. Text inside `<script>`/`<style>` is left raw (it isn't HTML) — never interpolate untrusted data there.
+
+If you have trusted HTML that should render as-is, opt out explicitly with `raw()`:
+```
+import { raw } from 'xpine';
+
+<div>{raw(trustedHtmlString)}</div>
+```
+Only use `raw()` with HTML you control — never with user input.
 
 ### Static Site Generation
 
