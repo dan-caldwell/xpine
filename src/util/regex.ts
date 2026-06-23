@@ -4,6 +4,9 @@ export default {
   configFile: /\+config\.[tj]sx?/g,
   dynamicRoutes: /(\[)(.*?)(\])/g,
   isDynamicRoute: /\[(.*)\]/g,
+  // Multi-segment (slash-containing) dynamic route, e.g. [...slug]
+  spreadRoute: /\[\.\.\.(.*?)\]/g,
+  isSpreadRoute: /\[\.\.\..*?\]/,
   endsWithTSX: /\.tsx$/,
   endsWithJSX: /\.jsx$/,
   endsWithJs: /\.js$/,

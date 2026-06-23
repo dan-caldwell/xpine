@@ -76,32 +76,27 @@ export async function runDevServer() {
 }
 
 function asyncServerClose(server) {
-  return new Promise((resolve, reject) => {
-    server.close();
-    resolve(true);
+  return new Promise((resolve) => {
+    // Wait for the server to actually finish closing before resolving, otherwise
+    // the next startServer() can hit EADDRINUSE on the still-bound port.
+    server.close(() => resolve(true));
+    // Drop keep-alive connections so close() doesn't hang waiting on them.
+    server.closeAllConnections?.();
   });
 }
 
 function createRebuildEmitter(delay = 500) {
   class RebuildEmitter extends EventEmitter { };
   const rebuildEmitter = new RebuildEmitter();
-  let start = 0;
-  let hasEmitted = false;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  // Debounce: collapse a burst of rebuild-server events into a single 'done'
+  // emitted once things have been quiet for `delay` ms.
   rebuildEmitter.on('rebuild-server', () => {
-    hasEmitted = false;
-    trigger();
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      timeout = null;
+      rebuildEmitter.emit('done');
+    }, delay);
   });
-  function trigger() {
-    start = Date.now();
-    const interval = setInterval(() => {
-      if (hasEmitted) return;
-      const now = Date.now();
-      if (now - start >= delay) {
-        rebuildEmitter.emit('done');
-        clearInterval(interval);
-        hasEmitted = true;
-      }
-    }, 100);
-  }
   return rebuildEmitter;
 }

@@ -404,7 +404,8 @@ export async function buildStaticFiles(config: ConfigFile, component: ComponentD
 export function determineOutputPathForStaticPath(builtComponentPath: string, componentDynamicPaths?: string[]) {
   if (componentDynamicPaths?.length) {
     return componentDynamicPaths.reduce((total, current) => {
-      return total.replace(`/[${current}]`, '');
+      // Strip both single-segment ([param]) and multi-segment ([...param]) tokens
+      return total.replace(`/[...${current}]`, '').replace(`/[${current}]`, '');
     }, path.dirname(builtComponentPath));
   } else {
     if (builtComponentPath?.match(regex.endsWithIndex)) {
@@ -423,7 +424,9 @@ export function getComponentDynamicPaths(componentPath: string): string[] {
   if (!matches?.length) return null;
   const output = [];
   for (const match of matches) {
-    output.push(match[2]);
+    if (!match[2]) continue;
+    // Multi-segment params are written [...slug]; the param key is "slug"
+    output.push(match[2].replace(/^\.\.\./, ''));
   }
   return output;
 }

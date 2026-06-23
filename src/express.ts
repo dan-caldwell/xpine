@@ -1,4 +1,4 @@
-import express, { NextFunction, Express, Request, Response } from 'express';
+import express, { NextFunction, Express, Request, RequestHandler, Response, Router } from 'express';
 import { globSync } from 'glob';
 import { config } from './util/get-config';
 import { verifyUser } from './auth';
@@ -12,6 +12,7 @@ import { doctypeHTML } from './util/constants';
 import EventEmitter from 'events';
 import { context } from './context';
 import { triggerXPineOnLoad } from './build/typescript-builder';
+import { createCsrfMiddleware } from './csrf';
 
 const methods = ['get', 'post', 'put', 'patch', 'delete'];
 const isDev = process.env.NODE_ENV === 'development';
@@ -21,6 +22,181 @@ type RouteMap = {
   path: string;
   originalRoute: string;
 }
+
+// A parsed file-based route turned into an Express-ready path.
+type ParsedRoute = {
+  foundMethod: string | undefined;
+  // The Express route path, e.g. /blog/:slug or /api/*
+  formattedRouteItem: string;
+  // The raw bracketed template, e.g. /blog/[...slug]
+  templateRoute: string;
+  // Whether the route uses a multi-segment ([...slug]) param
+  isSpread: boolean;
+}
+
+// Everything needed to register a multi-segment ([...slug]) route.
+type SpreadRoute = {
+  templateRoute: string;
+  // Known slugs from staticPaths(), each registered as an explicit route
+  entries: { [key: string]: string }[];
+  // Optional request-time validator for slugs not known at build time
+  validator: ((slug: string, req: Request) => boolean | Promise<boolean>) | null;
+}
+
+// A component invoked to render a JSX page into an HTML string.
+type RouteComponent = (props: {
+  req: Request;
+  res: Response;
+  data: unknown;
+  config: ConfigFile;
+  routePath: string;
+}) => string | Promise<string>;
+
+// Registers a path (plus any route-specific middleware) against the router.
+type RouteRegister = (routePath: string, preHandlers?: RequestHandler[]) => void;
+
+// ---------------------------------------------------------------------------
+// Route path parsing
+// ---------------------------------------------------------------------------
+
+// Turn a file-based route (e.g. /blog/[...slug] or /api/upload.POST) into an
+// Express route path, pulling out the HTTP method and noting spread routes.
+function parseRoutePath(route: string): ParsedRoute {
+  const slugRoute = route.replace(/[ ]/g, '');
+  const foundMethod = methods.find(method => slugRoute.toUpperCase().endsWith(`.${method.toUpperCase()}`));
+  // Strip the trailing .METHOD suffix (e.g. ".GET"); keep the bracketed template
+  // for spread expansion. Slicing the exact suffix length preserves any dots that
+  // appear earlier in the path.
+  const templateRoute = foundMethod ? slugRoute.slice(0, -(foundMethod.length + 1)) : slugRoute;
+
+  // Multi-segment dynamic tokens first: [...slug] -> :slug
+  let formattedRouteItem = templateRoute.replace(regex.spreadRoute, (_match, name) => ':' + name);
+  // Single-segment dynamic tokens: [param] -> :param
+  if (slugRoute.match(regex.isDynamicRoute)) {
+    for (const match of formattedRouteItem.matchAll(regex.dynamicRoutes)) {
+      formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
+    }
+  }
+  // Catch all routes: /_all_ -> /*
+  if (formattedRouteItem.match(regex.catchAllRoute)) {
+    formattedRouteItem = formattedRouteItem.replace(regex.catchAllRoute, '/*');
+  }
+
+  return {
+    foundMethod,
+    formattedRouteItem,
+    templateRoute,
+    isSpread: regex.isSpreadRoute.test(templateRoute),
+  };
+}
+
+// Replace every bracketed token ([...name] or [name]) with the matching value
+// from a staticPaths() entry to produce a concrete, slash-containing path.
+export function spreadConcretePath(templateRoute: string, entry: { [key: string]: string }): string {
+  return templateRoute
+    .replace(regex.spreadRoute, (_match, name) => entry[name] ?? '')
+    .replace(regex.dynamicRoutes, (_match, _open, name) => entry[name] ?? '')
+    .replace(/\/{2,}/g, '/');
+}
+
+// Build the wildcard path used by the runtime validator: [...slug] -> *, [param] -> :param
+export function spreadWildcardPath(templateRoute: string): string {
+  return templateRoute
+    .replace(regex.spreadRoute, '*')
+    .replace(regex.dynamicRoutes, (_match, _open, name) => ':' + name);
+}
+
+// The first multi-segment param name in a template, e.g. "slug" for /blog/[...slug]
+export function spreadSlugName(templateRoute: string): string | null {
+  const match = templateRoute.match(/\[\.\.\.(.*?)\]/);
+  return match ? match[1] : null;
+}
+
+// ---------------------------------------------------------------------------
+// Config + rendering
+// ---------------------------------------------------------------------------
+
+// Merge config from the matching +config files with any config exported by the
+// component itself (the component's own config wins).
+async function resolveConfig(configFilePaths: string[] | null, componentImport: { config?: ConfigFile }): Promise<ConfigFile> {
+  const baseConfig = configFilePaths ? await getCompleteConfig(configFilePaths, Date.now()) : {};
+  return componentImport?.config ? { ...baseConfig, ...componentImport.config, } : baseConfig;
+}
+
+// Render a JSX page (data -> component -> optional wrapper) into an HTML string.
+async function renderJSX(componentFn: RouteComponent, config: ConfigFile, req: Request, res: Response, urlPath: string): Promise<string> {
+  const data = config?.data ? await config.data(req) : null;
+  const children = await componentFn({ req, res, data, config, routePath: urlPath, });
+  const output = config?.wrapper
+    ? await config.wrapper({ req, children, config, data, routePath: urlPath, })
+    : children;
+  return doctypeHTML + output;
+}
+
+// ---------------------------------------------------------------------------
+// Spread ([...slug]) routes
+// ---------------------------------------------------------------------------
+
+// Gather the known slugs (from staticPaths()) and the optional validator that a
+// multi-segment route needs in order to register explicit, safe routes.
+async function resolveSpreadRoute(templateRoute: string, config: ConfigFile, originalRoute: string): Promise<SpreadRoute> {
+  let entries: { [key: string]: string }[] = [];
+  if (typeof config?.staticPaths === 'function') {
+    try {
+      entries = (await config.staticPaths()) || [];
+    } catch (err) {
+      console.error(err);
+      console.error('Could not resolve staticPaths for spread route', originalRoute);
+    }
+  }
+  return {
+    templateRoute,
+    entries,
+    validator: config?.isValid || null,
+  };
+}
+
+// Register a [...slug] route: one explicit route per known slug, plus an
+// optional validator-gated wildcard for slugs not known at build time.
+function registerSpreadRoutes(register: RouteRegister, spread: SpreadRoute) {
+  const slugName = spreadSlugName(spread.templateRoute);
+
+  // One explicit route per known slug — only these exact paths match, so
+  // unknown paths safely fall through to the 404 handler.
+  for (const entry of spread.entries) {
+    register(spreadConcretePath(spread.templateRoute, entry), [
+      (req, _res, next) => {
+        Object.assign(req.params, entry);
+        next();
+      }
+    ]);
+  }
+
+  // Optionally resolve slugs not known at build time, gated by config.isValid.
+  const { validator, } = spread;
+  if (validator) {
+    register(spreadWildcardPath(spread.templateRoute), [
+      async (req, _res, next) => {
+        const slug = req.params[0];
+        if (slugName) req.params[slugName] = slug;
+        try {
+          if (await validator(slug, req)) {
+            next();
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+        // Not a valid slug — fall through to the next route / 404 handler.
+        next('route');
+      }
+    ]);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Router construction
+// ---------------------------------------------------------------------------
 
 class OnInitEmitter extends EventEmitter { };
 const onInitEmitter = new OnInitEmitter();
@@ -49,42 +225,14 @@ function getAllBuiltRoutes(): RouteMap[] {
 
 async function createRouteFunction(route: RouteMap, configFiles: string[]) {
   const isJSX = route.originalRoute.endsWith('.tsx') || route.originalRoute.endsWith('.jsx');
-  // Configure result,methods for the route
-  const slugRoute = route.route.replace(/[ ]/g, '');
-  const foundMethod = methods.find(method => slugRoute.toUpperCase().endsWith(`.${method.toUpperCase()}`));
-  const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
-  let formattedRouteItem = slugRoute;
-  if (foundMethod) formattedRouteItem = formattedRouteItem.split('.').shift();
-  // Handle dynamic routing
-  if (isDynamicRoute) {
-    const result = [...formattedRouteItem.matchAll(regex.dynamicRoutes)];
-    for (const match of result) {
-      formattedRouteItem = formattedRouteItem.replace(match[0], ':' + match[2]);
-    }
-  }
-  // Handle catch all routes
-  const hasCatchAll = formattedRouteItem.match(regex.catchAllRoute);
-  if (hasCatchAll) formattedRouteItem = formattedRouteItem.replace(regex.catchAllRoute, '/*');
+  const { foundMethod, formattedRouteItem, templateRoute, isSpread, } = parseRoutePath(route.route);
 
-  // Import route
   const componentImport = await import(route.path);
   const componentFn = isDev ? null : componentImport?.default;
+  if (componentImport?.config?.onInit) await componentImport.config.onInit();
 
-  // Init
-  if (componentImport?.config?.onInit) {
-    await componentImport.config?.onInit();
-  }
-
-  // Config
-  let config: ConfigFile = {};
   const configFilePaths = getConfigFiles(route.originalRoute, configFiles);
-  config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
-  if (componentImport?.config) {
-    config = {
-      ...config,
-      ...componentImport.config,
-    };
-  }
+  const config = await resolveConfig(configFilePaths, componentImport);
 
   async function routeFn(req: Request, res: Response) {
     const urlPath = req?.route?.path || '/';
@@ -94,56 +242,52 @@ async function createRouteFunction(route: RouteMap, configFiles: string[]) {
         res.sendFile(staticPath);
         return;
       }
-      // Check if it's a string response from the componentFn or is a different response
+
+      // Production: serve the precompiled component and config.
       if (componentFn && !isDev) {
-        if (isJSX) {
-          const data = config?.data ? await config.data(req) : null;
-          const originalResult = await componentFn({ req, res, data, routePath: urlPath, });
-          const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, routePath: urlPath, }) : originalResult;
-          res.send(doctypeHTML + output);
-        } else {
-          await componentFn(req, res);
-        }
+        if (isJSX) res.send(await renderJSX(componentFn, config, req, res, urlPath));
+        else await componentFn(req, res);
         return;
       }
 
+      // Development: re-import the component and re-resolve config on every
+      // request so edits are picked up without restarting the server.
       await triggerXPineOnLoad(true);
-
-      const componentImportDev = await import(route.path + `?cache=${Date.now()}`);
-      const componentFnDev = componentImportDev.default;
-
-      // Trigger new onInit for all routes
+      const devImport = await import(route.path + `?cache=${Date.now()}`);
       onInitEmitter.emit('triggerOnInit', getAllBuiltRoutes());
 
-      // Require every time only if in development mode
       if (isJSX) {
-        let config = configFilePaths && await getCompleteConfig(configFilePaths, Date.now());
-        if (componentImportDev?.config) {
-          config = {
-            ...config,
-            ...componentImportDev.config,
-          };
-        }
-        const data = config?.data ? await config.data(req) : null;
-        const originalResult = await componentFnDev({ req, res, data, config, routePath: urlPath, });
-        const output = config?.wrapper ? await config.wrapper({ req, children: originalResult, config, data, routePath: urlPath, }) : originalResult;
+        const devConfig = await resolveConfig(configFilePaths, devImport);
+        const html = await renderJSX(devImport.default, devConfig, req, res, urlPath);
         context.clear();
-        res.send(doctypeHTML + output);
+        res.send(html);
       } else {
-        await componentFnDev(req, res);
+        await devImport.default(req, res);
       }
     } catch (err) {
       console.error(err);
-      res.status(err?.status || 500).send(err?.message || 'Error');
+      const status = err?.status || 500;
+      // Surface intentionally-thrown HTTP errors (those carrying a status) and
+      // full detail in dev, but never leak internal error text for unexpected
+      // failures in production.
+      const message = (isDev || err?.status) ? (err?.message || 'Error') : 'Internal Server Error';
+      res.status(status).send(message);
     }
   }
 
-  return {
-    formattedRouteItem,
-    foundMethod,
-    route,
-    config,
-    routeFn,
+  const spread = isSpread ? await resolveSpreadRoute(templateRoute, config, route.originalRoute) : null;
+
+  return { formattedRouteItem, foundMethod, route, config, routeFn, spread, };
+}
+
+// Build a helper that registers a path with its pre-handlers, the route's own
+// middleware (if any), and finally the route handler.
+function buildRouteRegister(router: Router, method: string, config: ConfigFile, routeFn: RequestHandler): RouteRegister {
+  return (routePath, preHandlers = []) => {
+    const handlers: RequestHandler[] = [...preHandlers];
+    if (config?.routeMiddleware) handlers.push(config.routeMiddleware);
+    handlers.push(routeFn);
+    router[method](routePath, ...handlers);
   };
 }
 
@@ -153,57 +297,63 @@ export async function createRouter() {
   const routeResults = [];
   const configFiles = globSync(config.pagesDir + '/**/+config.{tsx,ts}');
 
-  // Onload
   await triggerXPineOnLoad();
 
   for (const route of routeMap) {
     try {
-      const { formattedRouteItem, foundMethod, config, routeFn, } = await createRouteFunction(route, configFiles);
+      const { formattedRouteItem, foundMethod, config: routeConfig, routeFn, spread, } = await createRouteFunction(route, configFiles);
+      const register = buildRouteRegister(router, foundMethod || 'get', routeConfig, routeFn);
 
-      if (config?.routeMiddleware) {
-        router[foundMethod || 'get'](formattedRouteItem, config.routeMiddleware, routeFn);
-      } else {
-        router[foundMethod || 'get'](formattedRouteItem, routeFn);
-      }
+      if (spread) registerSpreadRoutes(register, spread);
+      else register(formattedRouteItem);
 
-      // Push to the route results array
-      routeResults.push({
-        formattedRouteItem,
-        foundMethod,
-        route,
-        routeFn,
-      });
+      routeResults.push({ formattedRouteItem, foundMethod, route, routeFn, });
     } catch (err) {
       console.error(err);
     }
   }
-  return {
-    router,
-    routeResults,
-  };
+
+  return { router, routeResults, };
 }
 
 async function verifyUserMiddleware(req: ServerRequest, _res: Response, next: NextFunction) {
-  // @ts-ignore
-  const { usertoken, } = req.cookies;
+  // @ts-ignore - req.cookies is populated by cookie-parser in the host app
+  const usertoken = req.cookies?.usertoken;
   if (!usertoken) {
     req.user = null;
+    next();
+    return;
   }
   try {
     const { user, } = await verifyUser(usertoken);
     req.user = user;
-  } catch (err) {
+  } catch {
     req.user = null;
   }
   next();
 }
 
 async function verifyAuthenticatedBundleMiddleware(req: ServerRequest, res: Response, next: NextFunction) {
-  if (!req?.originalUrl?.startsWith('/scripts/')) {
+  // Decode the path the same way express.static (send) does, so an encoded
+  // character (e.g. /scripts/secret%2Ejs) can't skip this auth check while
+  // still resolving to secret.js on disk.
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(req?.path || '');
+  } catch {
     next();
     return;
   }
-  const bundle = req?.originalUrl?.split('/')?.pop()?.split('.js')?.shift();
+  if (!decodedPath.startsWith('/scripts/')) {
+    next();
+    return;
+  }
+  const fileName = decodedPath.split('/').pop() || '';
+  if (!fileName.endsWith('.js')) {
+    next();
+    return;
+  }
+  const bundle = fileName.slice(0, -'.js'.length);
   // Check if bundle is valid
   const foundBundle = config?.bundles?.find(bundleItem => bundleItem?.id === bundle);
   if (!foundBundle) {
@@ -214,7 +364,7 @@ async function verifyAuthenticatedBundleMiddleware(req: ServerRequest, res: Resp
     res.status(403).json({
       message: 'Unauthenticated',
     });
-    return
+    return;
   }
   next();
 }
@@ -224,6 +374,12 @@ export async function createXPineRouter(app: any, beforeErrorRoute?: (app: Expre
   app.use(verifyAuthenticatedBundleMiddleware);
   app.use(express.static(config.distPublicDir));
   app.use(requestIP.mw());
+
+  // Opt-in CSRF protection (config.csrf). Mounted after static assets (which are
+  // safe GETs) so only page/API routes are guarded.
+  if (config?.csrf) {
+    app.use(createCsrfMiddleware(typeof config.csrf === 'object' ? config.csrf : undefined));
+  }
 
   const { router, routeResults, } = await createRouter();
 
@@ -251,13 +407,20 @@ export function routeHasStaticPath(route: string, params: { [key: string]: strin
   const paramEntries = Object.entries(params);
   let routeToStaticPath = route;
   for (const [key, value] of paramEntries) {
-    routeToStaticPath = routeToStaticPath.replace(`:${key}`, value);
+    // Use a replacer function so "$" sequences in the value (e.g. "$1", "$&")
+    // are inserted literally instead of being treated as replacement patterns.
+    routeToStaticPath = routeToStaticPath.replace(`:${key}`, () => value);
     // Handle catch all routes
-    if (key === '0') routeToStaticPath = routeToStaticPath.replace(/\/\*/g, `/${value}`);
+    if (key === '0') routeToStaticPath = routeToStaticPath.replace(/\/\*/g, () => `/${value}`);
   }
   routeToStaticPath += '/index.html';
-  // Check if path exists
-  const outputPath = path.join(config.distPagesDir, routeToStaticPath);
+  // Resolve the requested file and confine it to distPagesDir. Params come from
+  // the URL (and may contain "../" or encoded "%2e%2e%2f"), so without this check
+  // a catch-all/[...slug] route could be used to traverse out and read arbitrary
+  // index.html files on disk.
+  const pagesDir = path.resolve(config.distPagesDir);
+  const outputPath = path.resolve(pagesDir, '.' + path.posix.normalize('/' + routeToStaticPath));
+  if (outputPath !== pagesDir && !outputPath.startsWith(pagesDir + path.sep)) return false;
   if (fs.existsSync(outputPath)) return outputPath;
   return false;
 }
