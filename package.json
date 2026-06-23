@@ -1,6 +1,6 @@
 {
   "name": "xpine",
-  "version": "0.0.58",
+  "version": "0.0.59",
   "main": "dist/index.js",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.758.0",
