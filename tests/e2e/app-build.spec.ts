@@ -86,6 +86,29 @@ test('dynamic path with static catch all', async ({ page }) => {
   expect(fs.existsSync(path.join(config.distDir, './pages/catch-all-route/page/123/456/789/index.html'))).toEqual(true);
 });
 
+test('multi-segment dynamic route - statically generated slug', async ({ page }) => {
+  const result = await page.goto(url + '/blog/technology/devops/my-blog-post');
+  await expect(page.getByTestId('blog-slug')).toHaveText('technology/devops/my-blog-post');
+  const body = (await result.body()).toString();
+  expect(body).toContain('<!-- static -->');
+  expect(fs.existsSync(path.join(config.distDir, './pages/blog/technology/devops/my-blog-post/index.html'))).toEqual(true);
+});
+
+test('multi-segment dynamic route - slug validated at request time', async ({ page }) => {
+  const result = await page.goto(url + '/blog/preview/2024/upcoming/launch-post');
+  await expect(page.getByTestId('blog-slug')).toHaveText('preview/2024/upcoming/launch-post');
+  const body = (await result.body()).toString();
+  // Rendered dynamically via config.isValid, not from a prebuilt static file
+  expect(body).not.toContain('<!-- static -->');
+});
+
+test('multi-segment dynamic route - unknown slug falls through to 404', async ({ page }) => {
+  const result = await page.goto(url + '/blog/this-post-does-not-exist');
+  expect(result.status()).toEqual(404);
+  await expect(page.getByTestId('404-page')).toBeAttached();
+  await expect(page.getByTestId('blog-slug')).toHaveCount(0);
+});
+
 test('catch all api endpoint', async ({ page }) => {
   const result = await page.goto(url + '/catch-all-route/api/my-awesome-param');
   const body = (await result.body()).toString();
@@ -141,5 +164,10 @@ test('standalone files created', async ({ page }) => {
   expect(data.includes('sw-test-on-standalone')).toEqual(true);
   expect(data.includes('Alpine')).toEqual(false);
   const buildData = fs.readFileSync(path.join(config.distDir, './public/scripts/site.js'));
-   expect(buildData.includes('sw-test-on-standalone')).toEqual(false);
+  expect(buildData.includes('sw-test-on-standalone')).toEqual(false);
+});
+
+test('standalone json file created', async ({ page }) => {
+  const data = fs.readFileSync(path.join(config.distDir, './public/apps/test/manifest.json'));
+  expect(data.includes('test-json')).toEqual(true);
 });

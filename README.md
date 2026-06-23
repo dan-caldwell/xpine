@@ -155,6 +155,47 @@ You can create catch all routes by naming the file \_all\_.(jsx|tsx|js|ts). You 
 
 You can get the route param in your function with req.params[0], such as how express handles catch all routes.
 
+### Multi-segment dynamic routes (`[...slug]`)
+
+Catch all (`_all_`) routes register a single Express wildcard, which means they match _every_ path under their prefix — including paths that should not exist. For deeply nested but known dynamic routes (e.g. a blog post at `/blog/technology/devops/my-blog-post`), use a multi-segment dynamic param instead. Name the file `[...slug].(jsx|tsx|js|ts)`; the captured value (which may contain slashes) is available as `req.params.slug`.
+
+Instead of a wildcard, XPine registers an **explicit Express route for each slug** returned by the `staticPaths` config function, so unknown paths safely fall through to your 404 page:
+
+```
+// /src/pages/blog/+config.ts
+export default {
+  staticPaths() {
+    // Slugs can come from a CMS/database
+    return [
+      { slug: 'technology/devops/my-blog-post' },
+    ];
+  },
+};
+```
+
+```
+// /src/pages/blog/[...slug].tsx
+import { PageProps } from 'xpine/dist/types';
+
+export default function BlogPost({ req }: PageProps) {
+  return <div>{req.params.slug}</div>;
+}
+```
+
+Each slug from `staticPaths` is also statically generated at build time. To allow slugs that are not known at build time (without falling back to an unsafe catch-all), add an `isValid` function to the config. It receives the requested slug and runs at request time; return `false` (the default for unknown slugs) to fall through to the 404 handler:
+
+```
+export default {
+  staticPaths() {
+    return [{ slug: 'technology/devops/my-blog-post' }];
+  },
+  // Resolve newly-published slugs without a rebuild
+  async isValid(slug, req) {
+    return await postExists(slug);
+  },
+};
+```
+
 ### Route specific middleware
 
 If you need route specific middleware, e.g. for file uploads, you can specify a `routeMiddleware` function in a config variable in the endpoint file:

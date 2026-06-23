@@ -1,4 +1,4 @@
-import express, { NextFunction, Express, Request, Response } from 'express';
+import express, { NextFunction, Express, Request, RequestHandler, Response } from 'express';
 import { globSync } from 'glob';
 import { config } from './util/get-config';
 import { verifyUser } from './auth';
@@ -20,6 +20,37 @@ type RouteMap = {
   route: string;
   path: string;
   originalRoute: string;
+}
+
+type SpreadRoute = {
+  // Raw bracketed template, e.g. /blog/[...slug]
+  templateRoute: string;
+  // Known slugs from staticPaths(), used to register explicit routes
+  entries: { [key: string]: string }[];
+  // Optional request-time validator for slugs not known at build time
+  validator: ((slug: string, req: Request) => boolean | Promise<boolean>) | null;
+} | null;
+
+// Replace every bracketed token ([...name] or [name]) with the matching value
+// from a staticPaths() entry to produce a concrete, slash-containing path.
+export function spreadConcretePath(templateRoute: string, entry: { [key: string]: string }): string {
+  return templateRoute
+    .replace(regex.spreadRoute, (_match, name) => entry[name] ?? '')
+    .replace(regex.dynamicRoutes, (_match, _open, name) => entry[name] ?? '')
+    .replace(/\/{2,}/g, '/');
+}
+
+// Build the wildcard path used by the runtime validator: [...slug] -> *, [param] -> :param
+export function spreadWildcardPath(templateRoute: string): string {
+  return templateRoute
+    .replace(regex.spreadRoute, '*')
+    .replace(regex.dynamicRoutes, (_match, _open, name) => ':' + name);
+}
+
+// The first multi-segment param name in a template, e.g. "slug" for /blog/[...slug]
+export function spreadSlugName(templateRoute: string): string | null {
+  const match = templateRoute.match(/\[\.\.\.(.*?)\]/);
+  return match ? match[1] : null;
 }
 
 class OnInitEmitter extends EventEmitter { };
@@ -55,6 +86,12 @@ async function createRouteFunction(route: RouteMap, configFiles: string[]) {
   const isDynamicRoute = slugRoute.match(regex.isDynamicRoute);
   let formattedRouteItem = slugRoute;
   if (foundMethod) formattedRouteItem = formattedRouteItem.split('.').shift();
+  // Keep the raw bracketed template (e.g. /blog/[...slug]) so spread routes can be
+  // expanded into explicit per-slug routes during registration.
+  const templateRoute = formattedRouteItem;
+  const isSpreadRoute = regex.isSpreadRoute.test(templateRoute);
+  // Handle multi-segment dynamic tokens first: [...slug] -> :slug
+  formattedRouteItem = formattedRouteItem.replace(regex.spreadRoute, (_match, name) => ':' + name);
   // Handle dynamic routing
   if (isDynamicRoute) {
     const result = [...formattedRouteItem.matchAll(regex.dynamicRoutes)];
@@ -138,12 +175,34 @@ async function createRouteFunction(route: RouteMap, configFiles: string[]) {
     }
   }
 
+  // For multi-segment dynamic routes ([...slug]) gather the known slugs from
+  // staticPaths() so we can register an explicit Express route per slug instead
+  // of a catch-all wildcard. Unknown slugs only resolve if config.isValid allows.
+  let spread: SpreadRoute = null;
+  if (isSpreadRoute) {
+    let entries: { [key: string]: string }[] = [];
+    if (typeof config?.staticPaths === 'function') {
+      try {
+        entries = (await config.staticPaths()) || [];
+      } catch (err) {
+        console.error(err);
+        console.error('Could not resolve staticPaths for spread route', route.originalRoute);
+      }
+    }
+    spread = {
+      templateRoute,
+      entries,
+      validator: config?.isValid || null,
+    };
+  }
+
   return {
     formattedRouteItem,
     foundMethod,
     route,
     config,
     routeFn,
+    spread,
   };
 }
 
@@ -158,12 +217,46 @@ export async function createRouter() {
 
   for (const route of routeMap) {
     try {
-      const { formattedRouteItem, foundMethod, config, routeFn, } = await createRouteFunction(route, configFiles);
+      const { formattedRouteItem, foundMethod, config, routeFn, spread, } = await createRouteFunction(route, configFiles);
+      const method = foundMethod || 'get';
 
-      if (config?.routeMiddleware) {
-        router[foundMethod || 'get'](formattedRouteItem, config.routeMiddleware, routeFn);
+      const register = (routePath: string, preHandlers: RequestHandler[] = []) => {
+        const handlers = [...preHandlers];
+        if (config?.routeMiddleware) handlers.push(config.routeMiddleware);
+        handlers.push(routeFn);
+        router[method](routePath, ...handlers);
+      };
+
+      if (spread) {
+        const slugName = spreadSlugName(spread.templateRoute);
+        // Register an explicit route per known slug — only these paths match,
+        // so unknown paths safely fall through to the 404 handler.
+        for (const entry of spread.entries) {
+          const concretePath = spreadConcretePath(spread.templateRoute, entry);
+          register(concretePath, [(req: Request, _res: Response, next: NextFunction) => {
+            Object.assign(req.params, entry);
+            next();
+          }]);
+        }
+        // Optionally allow slugs not known at build time, gated by config.isValid.
+        if (spread.validator) {
+          register(spreadWildcardPath(spread.templateRoute), [async (req: Request, _res: Response, next: NextFunction) => {
+            const slug = req.params[0];
+            if (slugName) req.params[slugName] = slug;
+            try {
+              if (await spread.validator(slug, req)) {
+                next();
+                return;
+              }
+            } catch (err) {
+              console.error(err);
+            }
+            // Not a valid slug — fall through to the next route / 404 handler.
+            next('route');
+          }]);
+        }
       } else {
-        router[foundMethod || 'get'](formattedRouteItem, routeFn);
+        register(formattedRouteItem);
       }
 
       // Push to the route results array
